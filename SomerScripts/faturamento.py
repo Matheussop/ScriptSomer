@@ -1,3 +1,5 @@
+import pandas as pd
+from pandas import DataFrame
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -78,24 +80,17 @@ class Billing:
         self.dataExam = dataExam
 
 
-def getExams(worksheet_company, list_of_company, newCompany):
-    for exam in worksheet_company.iter_rows(min_row=5, values_only=True):
-        valueCost = 0
-        if (exam[0] is not None):
-            if (exam[7] is not None):
-                valueCost = exam[7]
-            elif (exam[6] is not None):
-                valueCost = exam[6]
-            elif (exam[5] is not None):
-                valueCost = exam[5]
-            elif (exam[4] is not None):
-                valueCost = exam[4]
-            elif (exam[3] is not None):
-                valueCost = exam[3]
-            elif (exam[2] is not None):
-                valueCost = exam[2]
+def getExams(company_name, list_of_company, newCompany):
+    df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
 
-            list_of_company.append((exam[0], valueCost))
+    table = df.iloc[3:19, 0:8]
+    # tableOfCompany_ValueTeste = table.iloc[:, [0, 1]]
+    # print(tableOfCompany_ValueTeste)
+    tableOfCompany_Value = table.iloc[:, [0, 1]]
+    # for teste in testeFull:
+    for exam in tableOfCompany_Value.values.tolist():
+        if (exam[0] is not None):
+            list_of_company.append((exam[0], exam[1]))
             if (newCompany.exams != ''):
                 newCompany.exams = newCompany.exams + ", " + str(exam[0])
             else:
@@ -149,7 +144,6 @@ for billing_row in billingList:
     if (len(companyList_Billing) == 0):
         newCompanyBilling = CompanyBilling()
 
-        print("So posso aparecer uma vez ")
         employeesBillingAux = EmployeesBilling(
             name=billing_row.nameEmployees,
             function=billing_row.functionEmployees,
@@ -180,11 +174,10 @@ for company_Billing in companyList_Billing:
     if (not hasName):
         companys_not_found = companys_not_found + ', \n' + company_Billing.name
     else:
-        worksheet_company: Worksheet = workbook_company[company_name]
         list_of_company = []
         # print("Company name:", company_name)
-        getExams(worksheet_company, list_of_company, newCompany)
-
+        getExams(company_name, list_of_company, newCompany)
+        print(list_of_company, '\n \n')
         name_exam = []
         index = 0
         employees_cost = []
@@ -194,7 +187,6 @@ for company_Billing in companyList_Billing:
 
         for name in name_exam:
             employee_company = Employee()
-            print("Teste de name[0]", name[0])
             employee_company.name = name[0]
             exams_exect = name[1].split('/')
 
@@ -223,7 +215,7 @@ for company_Billing in companyList_Billing:
                     exam = 'Avaliação Psocossocial'
                 hasExam = False
                 for company in list_of_company:
-                    if (exam.lower() in company[0].lower()):
+                    if (exam.lower() in company[0].lower() and not hasExam):
                         employee_company.cost += company[1]
                         hasExam = True
                 if (not hasExam):
@@ -234,7 +226,6 @@ for company_Billing in companyList_Billing:
                     elif (not (exam in newCompany.missingExams)):
                         newCompany.missingExams = newCompany.missingExams + ""\
                             ", " + exam
-
             newCompany.employees.append(employee_company)
         companyList.append(newCompany)
 
@@ -244,5 +235,5 @@ for company in companyList:
     print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
     print("========================================================")
 print(companys_not_found)
-workbook_company.save(WORKBOOK_PATH_COMPANY)
-workbook_employees.save(WORKBOOK_PATH_FUNC)
+# workbook_company.save(WORKBOOK_PATH_COMPANY)
+# workbook_employees.save(WORKBOOK_PATH_FUNC)

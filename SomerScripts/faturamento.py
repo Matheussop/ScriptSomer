@@ -179,7 +179,7 @@ for billing_row in billingList:
         companyList_Billing.append(newCompanyBilling)
 
 companyList_BillingTeste = []
-for i in range(2):
+for i in range(10):
     companyList_BillingTeste.append(companyList_Billing[i])
 
 # companyList_BillingTeste = [companyList_Billing[9]]
@@ -225,12 +225,13 @@ for company_Billing in companyList_BillingTeste:
             employee_company.typeExam = name[5]
             employee_company.data = dateFormatted
             exams_exect = name[1].split('/')
+            from unidecode import unidecode
 
             hasExam = False
             for exam in exams_exect:
                 exam = exam.strip()
                 if (exam == 'CLINICO'):
-                    exam = 'Exame Clínico'
+                    exam = 'Clínico'
                 if (exam == 'AUDIO'):
                     exam = 'Audiometria'
                 elif (exam == "HEMO"):
@@ -251,7 +252,9 @@ for company_Billing in companyList_BillingTeste:
                     exam = 'Avaliação Psocossocial'
                 hasExam = False
                 for company in list_of_company:
-                    if (exam.lower() in company[0].lower() and not hasExam):
+                    if (unidecode(exam.lower())
+                            in unidecode(company[0].lower())
+                            and not hasExam):
                         if (('externo' not in exam.lower() and
                                 'externo' not in company[0].lower())):
                             employee_company.cost += company[1]
@@ -306,7 +309,7 @@ for company in companyList:
         dataCompany.append(aux)
     df = pd.DataFrame(dataCompany, columns=columns)
 
-    ws: Worksheet = wb.create_sheet(company.name)
+    ws: Worksheet = wb.create_sheet(company.name[:15])
 
     # Montando a tabela
 

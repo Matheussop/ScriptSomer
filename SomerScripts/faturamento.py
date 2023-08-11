@@ -9,6 +9,15 @@ from datetime import datetime
 from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment
 from unidecode import unidecode
 
+dictionary_exams = [
+    ("CLINICO", "Clínico"),   ("AUDIO", "Audiometria"),
+    ("HEMO", "Hemograma c/ Plaquetas"), ("AC METIL", "Ácido Metil Hipúrico"),
+    ("AC HIPURICO", "Ácido Hipúrico"), ("AC MANDELICO", "Ácido Mandélico"),
+    ("AC METIL HIPURICO", "Ácido Metil Hipúrico"),
+    ("RX DE TORAX", "Raio-x de Tórax"),
+    ("AV PSICOSSOCIAL", "Avaliação Psocossocial")
+]
+
 
 class Employee:
     cost: float
@@ -204,7 +213,7 @@ for company_Billing in companyList_BillingTeste:
     company_name = ''
     for names in namesOfCompanys:
         # print('Empresa que tenho o sheet', unidecode(names[0]),
-        #       '  | Empresa que ta na tabela de exames:', company_name_billing)
+        # '  | Empresa que ta na tabela de exames:', company_name_billing)
         if (unidecode(names[0].lower()) in company_name_billing):
             # Selecionou a planilha da empresa'
             company_name = names[1]
@@ -240,26 +249,12 @@ for company_Billing in companyList_BillingTeste:
             hasExam = False
             for exam in exams_exect:
                 exam = exam.strip()
-                if (exam == 'CLINICO'):
-                    exam = 'Clínico'
-                if (exam == 'AUDIO'):
-                    exam = 'Audiometria'
-                elif (exam == "HEMO"):
-                    exam = 'Hemograma c/ Plaquetas'
-                elif (exam == 'AC HIPURICO'):
-                    exam = 'Ácido Hipúrico'
-                elif (exam == 'AC METIL'):
-                    exam = 'Ácido Metil Hipúrico'
-                elif (exam == 'AC METIL HIPURICO'):
-                    exam = 'Ácido Metil Hipúrico'
-                elif (exam == 'AC MANDELICO'):
-                    exam = 'Ácido Mandélico'
-                elif (exam == 'RX DE TORAX'):
-                    exam = 'Raio-x de Tórax'
-                elif (exam == 'RX DE TORAX'):
-                    exam = 'Raio-x de Tórax'
-                elif (exam == 'AV PSICOSSOCIAL'):
-                    exam = 'Avaliação Psocossocial'
+                exam_compar = unidecode(exam.lower())
+                for exam_significant in dictionary_exams:
+                    examDictionary = unidecode(exam_significant[0].lower())
+                    if (exam_compar == examDictionary):
+                        exam = exam_significant[1]
+
                 hasExam = False
                 for company in list_of_company:
                     if (unidecode(exam.lower())

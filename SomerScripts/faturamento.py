@@ -8,6 +8,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from typing import List
 from datetime import datetime
 from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment
+from unidecode import unidecode
 
 
 class Employee:
@@ -117,9 +118,12 @@ def getExams(company_name, list_of_company, newCompany):
                 newCompany.exams = str(exam[0])
 
 
-ROOT_FOLDER = Path(__file__).parent
-WORKBOOK_PATH_COMPANY = ROOT_FOLDER / 'ValoresEmpresas.xlsx'
-WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
+# ROOT_FOLDER = Path(__file__).parent
+# WORKBOOK_PATH_COMPANY = ROOT_FOLDER / 'ValoresEmpresas.xlsx'
+# WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
+WORKBOOK_PATH_COMPANY = './ValoresEmpresas.xlsx'
+WORKBOOK_PATH_FUNC = './examesRealizados.xlsx'
+
 # Carregando um arquivo do excel
 workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
 workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
@@ -182,6 +186,12 @@ companyList_BillingTeste = []
 for i in range(10):
     companyList_BillingTeste.append(companyList_Billing[i])
 
+names_of_workbook = workbook_company.sheetnames
+
+namesOfCompanys = []
+for names in names_of_workbook:
+    ws: Worksheet = workbook_company[f'{names}']
+    namesOfCompanys.append((ws['B1'].value, names))
 # companyList_BillingTeste = [companyList_Billing[9]]
 companys_not_found = 'Empresas não encontradas: '
 companyList = []
@@ -190,42 +200,43 @@ for company_Billing in companyList_BillingTeste:
     newCompany = Company(company_Billing.name)
     newCompany.employees = []
 
-    company_name_billing = company_Billing.name.lower()
-    names_of_workbook = workbook_company.sheetnames
+    company_name_billing = unidecode(company_Billing.name.lower())
     hasName = False
     company_name = ''
-    for names in names_of_workbook:
-        if (names.lower() in company_name_billing):
+    for names in namesOfCompanys:
+        # print('Empresa que tenho o sheet', unidecode(names[0]),
+        #       '  | Empresa que ta na tabela de exames:', company_name_billing)
+        if (unidecode(names[0].lower()) in company_name_billing):
             # Selecionou a planilha da empresa'
-            company_name = names
+            company_name = names[1]
             hasName = True
+            break
     if (not hasName):
         companys_not_found = companys_not_found + ', \n' + company_Billing.name
     else:
         list_of_company = []
         getExams(company_name, list_of_company, newCompany)
-        name_exam = []
+        names_exams = []
         index = 0
         employees_cost = []
 
         for employees in company_Billing.employeesBilling:
-            name_exam.append(
+            names_exams.append(
                 (employees.name, employees.exams, employees.function,
                  employees.exams, employees.data, employees.typeExam))
 
-        for name in name_exam:
+        for nameExam in names_exams:
             data_str_fmt_for_date = '%Y-%m-%d %H:%M:%S'
             data_str_fmt = '%d/%m/%Y '
-            date_Typed = datetime.strptime(name[4], data_str_fmt_for_date)
+            date_Typed = datetime.strptime(nameExam[4], data_str_fmt_for_date)
             dateFormatted = date_Typed.strftime(data_str_fmt)
             employee_company = Employee()
-            employee_company.name = name[0]
-            employee_company.function = name[2]
-            employee_company.exams = name[3]
-            employee_company.typeExam = name[5]
+            employee_company.name = nameExam[0]
+            employee_company.function = nameExam[2]
+            employee_company.exams = nameExam[3]
+            employee_company.typeExam = nameExam[5]
             employee_company.data = dateFormatted
-            exams_exect = name[1].split('/')
-            from unidecode import unidecode
+            exams_exect = nameExam[1].split('/')
 
             hasExam = False
             for exam in exams_exect:
@@ -270,12 +281,12 @@ for company_Billing in companyList_BillingTeste:
             newCompany.employees.append(employee_company)
         companyList.append(newCompany)
 
-# for company in companyList:
-#     print("========================================================")
-#     print("COMPANY LIST: \n",  company)
-#     print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
-#     print("========================================================")
-# print(companys_not_found)
+for company in companyList:
+    print("========================================================")
+    print("COMPANY LIST: \n",  company)
+    print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
+    print("========================================================")
+print(companys_not_found)
 
 columns = ['Mês', 'Nome', 'Função', 'Exames', 'Tipo de Exame', 'Valor']
 wb: Workbook = Workbook()
@@ -347,11 +358,8 @@ for company in companyList:
     for col, value in dims.items():
         ws.column_dimensions[col].width = value + 4
 
-wb.save('Faturamento_teste2.xlsx')
-
+wb.save('Faturamento_Empresas.xlsx')
+# ----------------------------------------------------------------
 
 # df.to_excel("Faturamento_teste.xlsx", sheet_name="Plan1",
 #             index=False, engine='openpyxl')
-
-# workbook_company.save(WORKBOOK_PATH_COMPANY)
-# workbook_employees.save(WORKBOOK_PATH_FUNC)

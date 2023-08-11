@@ -2,7 +2,6 @@ import pandas as pd
 import math
 import locale
 
-from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import List

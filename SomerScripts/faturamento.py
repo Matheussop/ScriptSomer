@@ -1,20 +1,31 @@
 import pandas as pd
-from pandas import DataFrame
-from pathlib import Path
+import math
+import locale
 
+from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import List
+from datetime import datetime
+from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment
 
 
 class Employee:
     cost: float
     name: str
     exams: str
+    function: str
+    data: str
+    typeExam: str
 
-    def __init__(self, name: str = '', cost: float = 0.0):
+    def __init__(self, name: str = '', cost: float = 0.0, function: str = '',
+                 exams: str = '', data: str = '', typeExam: str = '',):
         self.name = name
         self.cost = cost
+        self.function = function
+        self.exams = exams
+        self.data = data
+        self.typeExam = typeExam
 
 
 class Company:
@@ -38,20 +49,27 @@ class Company:
     def employeesList(self):
         employeeString = []
         for employee_person in self.employees:
+            formatedCoast = math.ceil(employee_person.cost * 100)/100
             employeeString.append(f'Nome: {employee_person.name}, '
-                                  f'Custo: {employee_person.cost:.2f}')
+                                  f'Custo: {formatedCoast}')
         return employeeString
 
 
 class EmployeesBilling:
     name: str
     function: str
+    data: datetime
     exams: str
+    typeExam: str
 
-    def __init__(self, name: str = '', function: str = '', exams: str = ''):
+    def __init__(self, name: str = '', function: str = '',
+                 exams: str = '',
+                 data: datetime = datetime.now(), typeExam: str = ''):
         self.name = name
         self.function = function
         self.exams = exams
+        self.data = data
+        self.typeExam = typeExam
 
 
 class CompanyBilling:
@@ -69,21 +87,23 @@ class Billing:
     nameEmployees: str
     functionEmployees: str
     exams: str
+    typeExam: str
 
     def __init__(self, dataExam: str = '', nameCompany: str = '',
                  nameEmployees: str = '', functionEmployees: str = '',
-                 exams: str = ''):
+                 exams: str = '', typeExam: str = ''):
         self.nameCompany = nameCompany
         self.nameEmployees = nameEmployees
         self.functionEmployees = functionEmployees
         self.exams = exams
         self.dataExam = dataExam
+        self.typeExam = typeExam
 
 
 def getExams(company_name, list_of_company, newCompany):
     df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
 
-    table = df.iloc[3:19, 0:8]
+    table = df.iloc[3:, 0:8]
     # tableOfCompany_ValueTeste = table.iloc[:, [0, 1]]
     # print(tableOfCompany_ValueTeste)
     tableOfCompany_Value = table.iloc[:, [0, 1]]
@@ -100,13 +120,12 @@ def getExams(company_name, list_of_company, newCompany):
 ROOT_FOLDER = Path(__file__).parent
 WORKBOOK_PATH_COMPANY = ROOT_FOLDER / 'ValoresEmpresas.xlsx'
 WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
-
 # Carregando um arquivo do excel
 workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
 workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
 
-
-sheet_name_employees = 'JUNHO 2023'
+name_month = 'JUNHO'
+sheet_name_employees = f'{name_month} 2023'
 
 worksheet_employees: Worksheet = workbook_employees[sheet_name_employees]
 
@@ -116,7 +135,7 @@ for billing_row in worksheet_employees.iter_rows(min_row=2, values_only=True):
         billingList.append(Billing(
             str(billing_row[0]), str(billing_row[1]),
             str(billing_row[2]), str(billing_row[3]),
-            str(billing_row[4])))
+            str(billing_row[4]), str(billing_row[5])))
 
 companyList_Billing = []
 for billing_row in billingList:
@@ -129,14 +148,18 @@ for billing_row in billingList:
             employeesBillingAux = EmployeesBilling(
                 billing_row.nameEmployees,
                 billing_row.functionEmployees,
-                billing_row.exams)
+                billing_row.exams,
+                data=billing_row.dataExam,
+                typeExam=billing_row.typeExam)
             company.employeesBilling.append(employeesBillingAux)
             noHasCompany = False
     if (noHasCompany):
         employeesBillingAux = EmployeesBilling(
             name=billing_row.nameEmployees,
             function=billing_row.functionEmployees,
-            exams=billing_row.exams)
+            exams=billing_row.exams,
+            data=billing_row.dataExam,
+            typeExam=billing_row.typeExam)
         newCompanyBilling = CompanyBilling(
             name=billing_row.nameCompany,
             employeesBilling=[employeesBillingAux])
@@ -147,17 +170,22 @@ for billing_row in billingList:
         employeesBillingAux = EmployeesBilling(
             name=billing_row.nameEmployees,
             function=billing_row.functionEmployees,
-            exams=billing_row.exams)
+            exams=billing_row.exams,
+            data=billing_row.dataExam,
+            typeExam=billing_row.typeExam)
         newCompanyBilling = CompanyBilling(
             name=billing_row.nameCompany,
             employeesBilling=[employeesBillingAux])
         companyList_Billing.append(newCompanyBilling)
 
-companyList_Billing = [companyList_Billing[0], companyList_Billing[1]]
+companyList_BillingTeste = []
+for i in range(2):
+    companyList_BillingTeste.append(companyList_Billing[i])
 
+# companyList_BillingTeste = [companyList_Billing[9]]
 companys_not_found = 'Empresas não encontradas: '
 companyList = []
-for company_Billing in companyList_Billing:
+for company_Billing in companyList_BillingTeste:
 
     newCompany = Company(company_Billing.name)
     newCompany.employees = []
@@ -175,19 +203,27 @@ for company_Billing in companyList_Billing:
         companys_not_found = companys_not_found + ', \n' + company_Billing.name
     else:
         list_of_company = []
-        # print("Company name:", company_name)
         getExams(company_name, list_of_company, newCompany)
-        print(list_of_company, '\n \n')
         name_exam = []
         index = 0
         employees_cost = []
 
         for employees in company_Billing.employeesBilling:
-            name_exam.append((employees.name, employees.exams))
+            name_exam.append(
+                (employees.name, employees.exams, employees.function,
+                 employees.exams, employees.data, employees.typeExam))
 
         for name in name_exam:
+            data_str_fmt_for_date = '%Y-%m-%d %H:%M:%S'
+            data_str_fmt = '%d/%m/%Y '
+            date_Typed = datetime.strptime(name[4], data_str_fmt_for_date)
+            dateFormatted = date_Typed.strftime(data_str_fmt)
             employee_company = Employee()
             employee_company.name = name[0]
+            employee_company.function = name[2]
+            employee_company.exams = name[3]
+            employee_company.typeExam = name[5]
+            employee_company.data = dateFormatted
             exams_exect = name[1].split('/')
 
             hasExam = False
@@ -216,8 +252,10 @@ for company_Billing in companyList_Billing:
                 hasExam = False
                 for company in list_of_company:
                     if (exam.lower() in company[0].lower() and not hasExam):
-                        employee_company.cost += company[1]
-                        hasExam = True
+                        if (('externo' not in exam.lower() and
+                                'externo' not in company[0].lower())):
+                            employee_company.cost += company[1]
+                            hasExam = True
                 if (not hasExam):
                     if (newCompany.missingExams == ''):
                         auxStr = "ah empresa não tem o(s) exame(s): "
@@ -229,11 +267,88 @@ for company_Billing in companyList_Billing:
             newCompany.employees.append(employee_company)
         companyList.append(newCompany)
 
+# for company in companyList:
+#     print("========================================================")
+#     print("COMPANY LIST: \n",  company)
+#     print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
+#     print("========================================================")
+# print(companys_not_found)
+
+columns = ['Mês', 'Nome', 'Função', 'Exames', 'Tipo de Exame', 'Valor']
+wb: Workbook = Workbook()
+wb.remove(wb['Sheet'])
+locale.setlocale(locale.LC_ALL, 'pt_BR')
+mnum = datetime.strptime(name_month, '%B').month
+
+# Estilo da tabela
+style_header = NamedStyle(name="style_header")
+style_header.font = Font(size=12, color='FFFFFF', name='Arial', )
+style_header.font.bold = True
+style_header.alignment = Alignment(horizontal="center", vertical="center")
+style_header.fill = PatternFill("solid", fgColor="76933c")
+style_content = NamedStyle(name="style_content")
+style_content.font = Font(size=10, name='Arial')
+style_content.fill = PatternFill("solid", fgColor="d8e4bc")
+
+wb.add_named_style(style_header)
+wb.add_named_style(style_content)
+
 for company in companyList:
-    print("========================================================")
-    print("COMPANY LIST: \n",  company)
-    print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
-    print("========================================================")
-print(companys_not_found)
+    dataCompany = []
+    for employeesItem in company.employees:
+        formatedCoast = math.ceil(employeesItem.cost * 100)/100
+        aux = [employeesItem.data,
+               employeesItem.name,
+               employeesItem.function,
+               employeesItem.exams,
+               employeesItem.typeExam,
+               formatedCoast]
+        dataCompany.append(aux)
+    df = pd.DataFrame(dataCompany, columns=columns)
+
+    ws: Worksheet = wb.create_sheet(company.name)
+
+    # Montando a tabela
+
+    # Header
+    ws.append([f'Mês {mnum:02}/23',
+               company.name, '', '', '', 'Valor'])
+
+    columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
+
+    ws.merge_cells('B1:E1')
+
+    for item in dataCompany:
+        ws.append(item)
+    # Header Styles
+    for i in columnsTable:
+        ws[f'{i}1'].style = style_header
+
+    # Conteúdo da tabela
+    for i in range(0, len(dataCompany)):
+        for y in columnsTable:
+            ws[f'{y}{i+2}'].style = style_content
+            if (y == 'A'):
+                ws[f'{y}{i+2}'].alignment = Alignment(
+                    horizontal="center", vertical="center")
+            if (y == 'F'):
+                number_forma = '"$"#,##0.00_);[Red]("$"#,##0.00)'
+                ws[f'{y}{i+2}'].number_format = number_forma
+    # Redimensionar colunas da tabela
+    dims = {}
+    for row in ws.rows:
+        for cell in row:
+            if cell.value:
+                dims[cell.column_letter] = max(
+                    (dims.get(cell.column_letter, 0), len(str(cell.value))))
+    for col, value in dims.items():
+        ws.column_dimensions[col].width = value + 4
+
+wb.save('Faturamento_teste2.xlsx')
+
+
+# df.to_excel("Faturamento_teste.xlsx", sheet_name="Plan1",
+#             index=False, engine='openpyxl')
+
 # workbook_company.save(WORKBOOK_PATH_COMPANY)
 # workbook_employees.save(WORKBOOK_PATH_FUNC)

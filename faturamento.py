@@ -15,7 +15,13 @@ dictionary_exams = [
     ("AC HIPURICO", "Ácido Hipúrico"), ("AC MANDELICO", "Ácido Mandélico"),
     ("AC METIL HIPURICO", "Ácido Metil Hipúrico"),
     ("RX DE TORAX", "Raio-x de Tórax"),
-    ("AV PSICOSSOCIAL", "Avaliação Psocossocial")
+    ("AV PSICOSSOCIAL", "Avaliação Psicossocial"),
+    ("CLINICO EXTERNO", "Exame Clínico (in loco)")
+]
+
+dictionary_company_names = [
+    ("Minas Brasil", "BRASIL COMERCIAL"),
+    ("ACTur", "AC TRANSPORTES"),
 ]
 
 
@@ -114,7 +120,6 @@ class Billing:
 # WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
 WORKBOOK_PATH_COMPANY = './ValoresEmpresas.xlsx'
 WORKBOOK_PATH_FUNC = './examesRealizados.xlsx'
-wb: Workbook = Workbook()
 
 
 def getExams(company_name, list_of_company, newCompany):
@@ -142,7 +147,7 @@ def setDateXmlsToString(dataInXmls) -> str:
     return date_Typed.strftime(data_str_fmt)
 
 
-def styleXmls():
+def styleXmls(wb):
     # Estilo da tabela
     style_header = NamedStyle(name="style_header")
     style_header.font = Font(size=12, color='FFFFFF', name='Arial', )
@@ -210,6 +215,14 @@ def resizeTable(ws):
         ws.column_dimensions[col].width = value + 4
 
 
+def calculateCoast(company) -> int:
+    coast = 0
+    for employee in company.employees:
+        print(employee)
+        # coast += employee[5]
+    return coast
+
+
 def main():
     # Carregando um arquivo do excel
     workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
@@ -221,7 +234,8 @@ def main():
     worksheet_employees: Worksheet = workbook_employees[sheet_name_employees]
 
     billingList = []
-    for billing_row in worksheet_employees.iter_rows(min_row=2, values_only=True):
+    for billing_row in worksheet_employees.iter_rows(min_row=2,
+                                                     values_only=True):
         if (billing_row[0] is not None):
             billingList.append(Billing(
                 str(billing_row[0]), str(billing_row[1]),
@@ -270,9 +284,10 @@ def main():
 
     # Bloco para testar numero x de empresas
     companyList_BillingTeste = []
-    for i in range(10):
+    for i in range(20):
         companyList_BillingTeste.append(companyList_Billing[i])
 
+    # companyList_BillingTeste = [companyList_Billing[3]]
     # ----------------------------------------------------
 
     # Percorrer o sheet e pegar o nome da empresa dentro da tabela
@@ -281,9 +296,10 @@ def main():
     for names in names_of_workbook:
         ws: Worksheet = workbook_company[f'{names}']
         namesOfCompanys.append((ws['B1'].value, names))
-    # companyList_BillingTeste = [companyList_Billing[9]]
-    # ----------------------------------------------------
 
+    for nameCompany in dictionary_company_names:
+        namesOfCompanys.append((nameCompany[1], nameCompany[0]))
+    # ----------------------------------------------------
     companys_not_found = 'Empresas não encontradas: '
     companyList = []
     for company_Billing in companyList_BillingTeste:
@@ -295,9 +311,17 @@ def main():
         hasName = False
         company_name = ''
         for names in namesOfCompanys:
-            # print('Empresa que tenho o sheet', unidecode(names[0]),
-            # '  | Empresa que ta na tabela de exames:', company_name_billing)
-            if (unidecode(names[0].lower()) in company_name_billing):
+            namesAux = unidecode(names[0].lower())
+            namesAux2 = unidecode(names[1].lower())
+            company_name_billing = company_name_billing.replace('ltda', '')
+            company_name_billing = company_name_billing.replace('eireli', '')
+            namesAux = namesAux.replace('ltda', '')
+            namesAux = namesAux.replace('eireli', '')
+            # print('Empresa que tenho o sheet', namesAux,
+            #       '  | Empresa que ta na tabela de exames:', company_name_billing)
+
+            if ((namesAux in company_name_billing)
+                    or (namesAux2 in company_name_billing)):
                 company_name = names[1]
                 hasName = True
                 break
@@ -308,7 +332,6 @@ def main():
             getExams(company_name, list_of_company, newCompany)
             namesAndExams = []
             index = 0
-            employees_cost = []
 
             for employees in company_Billing.employeesBilling:
                 namesAndExams.append(
@@ -354,42 +377,44 @@ def main():
                 newCompany.employees.append(employee_company)
             companyList.append(newCompany)
 
-    for company in companyList:
-        print("========================================================")
-        print("COMPANY LIST: \n",  company)
-        print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
-        print("========================================================")
-    print(companys_not_found)
+    # for company in companyList:
+    #     print("========================================================")
+    #     print("COMPANY LIST: \n",  company)
+    #     # print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
+    #     print("========================================================")
+    # print(companys_not_found)
 
-    wb.remove(wb['Sheet'])
-    locale.setlocale(locale.LC_ALL, 'pt_BR')
-    monthNumber = datetime.strptime(name_month, '%B').month
+    if len(companyList) > 0:
 
-    styleXmls()
+        locale.setlocale(locale.LC_ALL, 'pt_BR')
+        monthNumber = datetime.strptime(name_month, '%B').month
 
-    for company in companyList:
-        dataCompany = []
+        for company in companyList:
+            wb: Workbook = Workbook()
+            styleXmls(wb)
+            wb.remove(wb['Sheet'])
+            dataCompany = []
 
-        dataCompany = setContentDataFrame(company.employees)
+            dataCompany = setContentDataFrame(company.employees)
 
-        ws: Worksheet = wb.create_sheet(company.name[:15])
+            ws: Worksheet = wb.create_sheet(company.name[:15])
 
-        mountStyleHeaderTable(monthNumber, ws, company.name)
+            mountStyleHeaderTable(monthNumber, ws, company.name)
 
-        for item in dataCompany:
-            ws.append(item)
+            coast = 0
+            coast = calculateCoast(company)
 
-        mountStyleContentTable(ws, dataCompany)
-        resizeTable(ws)
+            for item in dataCompany:
+                ws.append(item)
 
-    wb.save('Faturamento_Empresas.xlsx')
+            mountStyleContentTable(ws, dataCompany)
+            resizeTable(ws)
+
+            nameFile = f'{company.name} - {monthNumber} {name_month}'
+            wb.save(f'Teste/Faturamento - {nameFile} 2023.xlsx')
 
 # ----------------------------------------------------------------
 
 
 if __name__ == '__main__':
     main()
-    # wb = load_workbook("Faturamento_Empresas.xlsx")
-    # ws = wb["Results"]
-    # pivot = ws._pivots[0]  # any will do as they share the same cache
-    # pivot.cache.refreshOnLoad = True

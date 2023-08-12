@@ -126,6 +126,82 @@ def getExams(company_name, list_of_company, newCompany):
                 newCompany.exams = str(exam[0])
 
 
+def setDateXmlsToString(dataInXmls) -> str:
+    # Bloco para fixar a data como string
+    data_str_fmt_for_date = '%Y-%m-%d %H:%M:%S'
+    data_str_fmt = '%d/%m/%Y '
+    date_Typed = datetime.strptime(dataInXmls, data_str_fmt_for_date)
+    return date_Typed.strftime(data_str_fmt)
+
+
+def styleXmls():
+    # Estilo da tabela
+    style_header = NamedStyle(name="style_header")
+    style_header.font = Font(size=12, color='FFFFFF', name='Arial', )
+    style_header.font.bold = True
+    style_header.alignment = Alignment(horizontal="center", vertical="center")
+    style_header.fill = PatternFill("solid", fgColor="76933c")
+    style_content = NamedStyle(name="style_content")
+    style_content.font = Font(size=10, name='Arial')
+    style_content.fill = PatternFill("solid", fgColor="d8e4bc")
+
+    wb.add_named_style(style_header)
+    wb.add_named_style(style_content)
+
+
+def setContentDataFrame(arrayUnformatedData: List) -> List:
+    data = []
+    for employeesItem in arrayUnformatedData:
+        formatedCoast = math.ceil(employeesItem.cost * 100)/100
+        aux = [employeesItem.data,
+               employeesItem.name,
+               employeesItem.function,
+               employeesItem.exams,
+               employeesItem.typeExam,
+               formatedCoast]
+        data.append(aux)
+    return data
+
+
+def mountStyleHeaderTable(monthNumber: int):
+    columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
+    # Header
+    ws.append([f'Mês {monthNumber:02}/23',
+               company.name, '', '', '', 'Valor'])
+    # Aplicando Header Styles
+    for i in columnsTable:
+        ws[f'{i}1'].style = 'style_header'
+
+    ws.merge_cells('B1:E1')
+
+
+def mountStyleContentTable():
+    columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
+
+    # Conteúdo da tabela
+    for i in range(0, len(dataCompany)):
+        for y in columnsTable:
+            ws[f'{y}{i+2}'].style = 'style_content'
+            if (y == 'A'):
+                ws[f'{y}{i+2}'].alignment = Alignment(
+                    horizontal="center", vertical="center")
+            if (y == 'F'):
+                number_forma = '"$"#,##0.00_);[Red]("$"#,##0.00)'
+                ws[f'{y}{i+2}'].number_format = number_forma
+
+
+def resizeTable():
+    # Redimensionar colunas da tabela
+    dims = {}
+    for row in ws.rows:
+        for cell in row:
+            if cell.value:
+                dims[cell.column_letter] = max(
+                    (dims.get(cell.column_letter, 0), len(str(cell.value))))
+    for col, value in dims.items():
+        ws.column_dimensions[col].width = value + 4
+
+
 # ROOT_FOLDER = Path(__file__).parent
 # WORKBOOK_PATH_COMPANY = ROOT_FOLDER / 'ValoresEmpresas.xlsx'
 # WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
@@ -178,7 +254,6 @@ for billing_row in billingList:
         companyList_Billing.append(newCompanyBilling)
     if (len(companyList_Billing) == 0):
         newCompanyBilling = CompanyBilling()
-
         employeesBillingAux = EmployeesBilling(
             name=billing_row.nameEmployees,
             function=billing_row.functionEmployees,
@@ -190,17 +265,22 @@ for billing_row in billingList:
             employeesBilling=[employeesBillingAux])
         companyList_Billing.append(newCompanyBilling)
 
+# Bloco para testar numero x de empresas
 companyList_BillingTeste = []
 for i in range(10):
     companyList_BillingTeste.append(companyList_Billing[i])
 
-names_of_workbook = workbook_company.sheetnames
+# ----------------------------------------------------
 
+# Percorrer o sheet e pegar o nome da empresa dentro da tabela
+names_of_workbook = workbook_company.sheetnames
 namesOfCompanys = []
 for names in names_of_workbook:
     ws: Worksheet = workbook_company[f'{names}']
     namesOfCompanys.append((ws['B1'].value, names))
 # companyList_BillingTeste = [companyList_Billing[9]]
+# ----------------------------------------------------
+
 companys_not_found = 'Empresas não encontradas: '
 companyList = []
 for company_Billing in companyList_BillingTeste:
@@ -215,7 +295,6 @@ for company_Billing in companyList_BillingTeste:
         # print('Empresa que tenho o sheet', unidecode(names[0]),
         # '  | Empresa que ta na tabela de exames:', company_name_billing)
         if (unidecode(names[0].lower()) in company_name_billing):
-            # Selecionou a planilha da empresa'
             company_name = names[1]
             hasName = True
             break
@@ -224,27 +303,24 @@ for company_Billing in companyList_BillingTeste:
     else:
         list_of_company = []
         getExams(company_name, list_of_company, newCompany)
-        names_exams = []
+        namesAndExams = []
         index = 0
         employees_cost = []
 
         for employees in company_Billing.employeesBilling:
-            names_exams.append(
+            namesAndExams.append(
                 (employees.name, employees.exams, employees.function,
                  employees.exams, employees.data, employees.typeExam))
 
-        for nameExam in names_exams:
-            data_str_fmt_for_date = '%Y-%m-%d %H:%M:%S'
-            data_str_fmt = '%d/%m/%Y '
-            date_Typed = datetime.strptime(nameExam[4], data_str_fmt_for_date)
-            dateFormatted = date_Typed.strftime(data_str_fmt)
+        for nameAndExam in namesAndExams:
+            dateFormatted = setDateXmlsToString(nameAndExam[4])
             employee_company = Employee()
-            employee_company.name = nameExam[0]
-            employee_company.function = nameExam[2]
-            employee_company.exams = nameExam[3]
-            employee_company.typeExam = nameExam[5]
+            employee_company.name = nameAndExam[0]
+            employee_company.function = nameAndExam[2]
+            employee_company.exams = nameAndExam[3]
+            employee_company.typeExam = nameAndExam[5]
             employee_company.data = dateFormatted
-            exams_exect = nameExam[1].split('/')
+            exams_exect = nameAndExam[1].split('/')
 
             hasExam = False
             for exam in exams_exect:
@@ -282,78 +358,28 @@ for company in companyList:
     print("========================================================")
 print(companys_not_found)
 
-columns = ['Mês', 'Nome', 'Função', 'Exames', 'Tipo de Exame', 'Valor']
 wb: Workbook = Workbook()
 wb.remove(wb['Sheet'])
 locale.setlocale(locale.LC_ALL, 'pt_BR')
-mnum = datetime.strptime(name_month, '%B').month
+monthNumber = datetime.strptime(name_month, '%B').month
 
-# Estilo da tabela
-style_header = NamedStyle(name="style_header")
-style_header.font = Font(size=12, color='FFFFFF', name='Arial', )
-style_header.font.bold = True
-style_header.alignment = Alignment(horizontal="center", vertical="center")
-style_header.fill = PatternFill("solid", fgColor="76933c")
-style_content = NamedStyle(name="style_content")
-style_content.font = Font(size=10, name='Arial')
-style_content.fill = PatternFill("solid", fgColor="d8e4bc")
-
-wb.add_named_style(style_header)
-wb.add_named_style(style_content)
+styleXmls()
 
 for company in companyList:
     dataCompany = []
-    for employeesItem in company.employees:
-        formatedCoast = math.ceil(employeesItem.cost * 100)/100
-        aux = [employeesItem.data,
-               employeesItem.name,
-               employeesItem.function,
-               employeesItem.exams,
-               employeesItem.typeExam,
-               formatedCoast]
-        dataCompany.append(aux)
-    df = pd.DataFrame(dataCompany, columns=columns)
+
+    dataCompany = setContentDataFrame(company.employees)
 
     ws: Worksheet = wb.create_sheet(company.name[:15])
 
-    # Montando a tabela
-
-    # Header
-    ws.append([f'Mês {mnum:02}/23',
-               company.name, '', '', '', 'Valor'])
-
-    columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
-
-    ws.merge_cells('B1:E1')
+    mountStyleHeaderTable(monthNumber)
 
     for item in dataCompany:
         ws.append(item)
-    # Header Styles
-    for i in columnsTable:
-        ws[f'{i}1'].style = style_header
 
-    # Conteúdo da tabela
-    for i in range(0, len(dataCompany)):
-        for y in columnsTable:
-            ws[f'{y}{i+2}'].style = style_content
-            if (y == 'A'):
-                ws[f'{y}{i+2}'].alignment = Alignment(
-                    horizontal="center", vertical="center")
-            if (y == 'F'):
-                number_forma = '"$"#,##0.00_);[Red]("$"#,##0.00)'
-                ws[f'{y}{i+2}'].number_format = number_forma
-    # Redimensionar colunas da tabela
-    dims = {}
-    for row in ws.rows:
-        for cell in row:
-            if cell.value:
-                dims[cell.column_letter] = max(
-                    (dims.get(cell.column_letter, 0), len(str(cell.value))))
-    for col, value in dims.items():
-        ws.column_dimensions[col].width = value + 4
+    mountStyleContentTable()
+    resizeTable()
 
 wb.save('Faturamento_Empresas.xlsx')
-# ----------------------------------------------------------------
 
-# df.to_excel("Faturamento_teste.xlsx", sheet_name="Plan1",
-#             index=False, engine='openpyxl')
+# ----------------------------------------------------------------

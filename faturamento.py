@@ -145,15 +145,15 @@ def getExams(company_name, list_of_company, newCompany):
                 newCompany.exams = str(exam[0])
 
 
-def setDateXmlsToString(dataInXmls) -> str:
+def setDateXlsxToString(dataInXlsx) -> str:
     # Bloco para fixar a data como string
     data_str_fmt_for_date = '%Y-%m-%d %H:%M:%S'
     data_str_fmt = '%d/%m/%Y '
-    date_Typed = datetime.strptime(dataInXmls, data_str_fmt_for_date)
+    date_Typed = datetime.strptime(dataInXlsx, data_str_fmt_for_date)
     return date_Typed.strftime(data_str_fmt)
 
 
-def styleXmls(wb):
+def styleXlsx(wb):
     # Estilo da tabela
     bd = Side(style='thin', color="000000")
     style_header = NamedStyle(name="style_header")
@@ -183,13 +183,12 @@ def styleXmls(wb):
 def setContentDataFrame(arrayUnformattedData: List) -> List:
     data = []
     for employeesItem in arrayUnformattedData:
-        formattedCoast = math.ceil(employeesItem.cost * 100)/100
         aux = [employeesItem.data,
                employeesItem.name,
                employeesItem.function,
                employeesItem.exams,
                employeesItem.typeExam,
-               formattedCoast]
+               employeesItem.cost]
         data.append(aux)
     return data
 
@@ -200,9 +199,8 @@ def setContentDetailDataFrame(arrayUnformattedData: List) -> List:
         listOfExams = []
         listOfCost = []
         for examCost in employeesItem.examsCost:
-            formattedCoastDetail = math.ceil(examCost[1] * 100)/100
             listOfExams.append(examCost[0])  # name exam
-            listOfCost.append(formattedCoastDetail)  # value exam
+            listOfCost.append(examCost[1])  # value exam
 
         aux = [employeesItem.data,
                employeesItem.name,
@@ -226,7 +224,7 @@ def mountStyleHeaderTable(monthNumber: int, ws: Worksheet, companyName: str):
     ws.merge_cells('B1:E1')
 
 
-def mountStyleContentTable(ws, dataCompany):
+def mountStyleContentTable(ws):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
     count_row = ws.max_row
 
@@ -234,9 +232,7 @@ def mountStyleContentTable(ws, dataCompany):
     for i in range(0, count_row-1):
         for y in columnsTable:
             ws[f'{y}{i+2}'].style = 'style_content'
-            # if (y == 'A'):
-            #     ws[f'{y}{i+2}'].alignment = Alignment(
-            #         horizontal="center", vertical="center")
+
             ws[f'{y}{i+2}'].alignment = Alignment(
                 horizontal="center", vertical="center")
             if (y == 'F'):
@@ -302,9 +298,32 @@ def addDetailDataFrame(ws, item):
             f'{letter}{row_count+1}:{letter}{row_count+lenOfExams}')
 
 
+def getNameCompanyInSheet() -> List:
+    workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
+
+    # Percorrer o sheet e pegar o nome da empresa dentro da tabela
+    names_of_workbook = workbook_company.sheetnames
+    namesOfCompanys = []
+    for names in names_of_workbook:
+        ws: Worksheet = workbook_company[f'{names}']
+        namesOfCompanys.append((ws['B1'].value, names))
+
+    for nameCompany in dictionary_company_names:
+        namesOfCompanys.append((nameCompany[1], nameCompany[0]))
+
+    return namesOfCompanys
+
+
+def showMissingExams(ws, missingExams):
+    text = 'Esta empresa não tem o(s) seguintes exame(s) cadastrados: '
+    ws.append([f'{text}', '', f'{missingExams}',
+              'missingExams2', 'missingExams3', 'missingExams4'])
+    ws.merge_cells(f'A{ws.max_row}:B{ws.max_row}')
+    ws.merge_cells(f'C{ws.max_row}:F{ws.max_row}')
+
+
 def main():
     # Carregando um arquivo do excel
-    workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
     workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
 
     name_month = 'JUNHO'
@@ -369,16 +388,8 @@ def main():
     # companyList_BillingTeste = [companyList_Billing[3]]
     # ----------------------------------------------------
 
-    # Percorrer o sheet e pegar o nome da empresa dentro da tabela
-    names_of_workbook = workbook_company.sheetnames
-    namesOfCompanys = []
-    for names in names_of_workbook:
-        ws: Worksheet = workbook_company[f'{names}']
-        namesOfCompanys.append((ws['B1'].value, names))
+    namesOfCompanys = getNameCompanyInSheet()
 
-    for nameCompany in dictionary_company_names:
-        namesOfCompanys.append((nameCompany[1], nameCompany[0]))
-    # ----------------------------------------------------
     companys_not_found = 'Empresas não encontradas: '
     companyList = []
     for company_Billing in companyList_BillingTeste:
@@ -396,8 +407,8 @@ def main():
             company_name_billing = company_name_billing.replace('eireli', '')
             namesAux = namesAux.replace('ltda', '')
             namesAux = namesAux.replace('eireli', '')
-            # print('Empresa que tenho o sheet', namesAux,
-            #       '  | Empresa que ta na tabela de exames:', company_name_billing)
+    # print('Empresa que tenho o sheet', namesAux,
+    #       '  | Empresa que ta na tabela de exames:', company_name_billing)
 
             if ((namesAux in company_name_billing)
                     or (namesAux2 in company_name_billing)):
@@ -405,7 +416,8 @@ def main():
                 hasName = True
                 break
         if (not hasName):
-            companys_not_found = companys_not_found + ', \n' + company_Billing.name
+            companys_not_found = companys_not_found + '\
+              , \n' + company_Billing.name
         else:
             list_of_company = []
             getExams(company_name, list_of_company, newCompany)
@@ -417,7 +429,7 @@ def main():
                      employees.exams, employees.data, employees.typeExam))
 
             for nameAndExam in namesAndExams:
-                dateFormatted = setDateXmlsToString(nameAndExam[4])
+                dateFormatted = setDateXlsxToString(nameAndExam[4])
                 employee_company = Employee()
                 employee_company.name = nameAndExam[0]
                 employee_company.function = nameAndExam[2]
@@ -425,10 +437,10 @@ def main():
                 employee_company.typeExam = nameAndExam[5]
                 employee_company.data = dateFormatted
                 employee_company.examsCost = []
-                exams_exect = nameAndExam[1].split('/')
+                exams_exact = nameAndExam[1].split('/')
 
                 hasExam = False
-                for exam in exams_exect:
+                for exam in exams_exact:
                     exam = exam.strip()
                     exam_compar = unidecode(exam.lower())
                     for exam_significant in dictionary_exams:
@@ -450,12 +462,12 @@ def main():
                                 hasExam = True
                     if (not hasExam):
                         if (newCompany.missingExams == ''):
-                            auxStr = "ah empresa não tem o(s) exame(s): "
+                            auxStr = ""
                             newCompany.missingExams = auxStr + exam
 
                         elif (not (exam in newCompany.missingExams)):
-                            newCompany.missingExams = newCompany.missingExams + ""\
-                                ", " + exam
+                            newCompany.missingExams = newCompany.missingExams \
+                                + ", " + exam
                 newCompany.employees.append(employee_company)
             companyList.append(newCompany)
 
@@ -464,7 +476,7 @@ def main():
     #     print("COMPANY LIST: \n",  company)
     #     # print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
     #     print("========================================================")
-    # print(companys_not_found)
+    print(companys_not_found)
 
     if len(companyList) > 0:
 
@@ -479,7 +491,7 @@ def main():
 
         for company in companyList:
             wb: Workbook = Workbook()
-            styleXmls(wb)
+            styleXlsx(wb)
             wb.remove(wb['Sheet'])
             dataCompany = []
 
@@ -500,8 +512,9 @@ def main():
                     addDetailDataFrame(ws, item)
                 else:
                     ws.append(item)
-
-            mountStyleContentTable(ws, dataCompany)
+            if (company.missingExams != ''):
+                showMissingExams(ws, company.missingExams)
+            mountStyleContentTable(ws)
             setTotalCost(ws)
             resizeTable(ws)
 

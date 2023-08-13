@@ -137,6 +137,8 @@ def getExams(company_name, list_of_company, newCompany):
     tableOfCompany_Value = table.iloc[:, [0, 1]]
     # for teste in testeFull:
     for exam in tableOfCompany_Value.values.tolist():
+        if (str(exam[0]) == 'nan'):
+            break
         if (exam[0] is not None):
             list_of_company.append((exam[0], exam[1]))
             if (newCompany.exams != ''):
@@ -286,16 +288,21 @@ def addDetailDataFrame(ws, item):
     lenOfExams = len(item[3])
     exams = item[3]
     examsCost = item[5]
+    if (exams == []):
+        exams.append("-")
+        examsCost.append("-")
+
     firstRow = [item[0], item[1], item[2], exams[0], item[4], examsCost[0]]
     ws.append(firstRow)
-    for i in range(1, lenOfExams, ):
+    for i in range(1, lenOfExams):
         ws.append(['', '', '',  exams[i], '', examsCost[i]])
 
     columnsAppend = ['A', 'B', 'C', 'E']
     # merge_cells A, B, C, E
-    for letter in columnsAppend:
-        ws.merge_cells(
-            f'{letter}{row_count+1}:{letter}{row_count+lenOfExams}')
+    if (len(exams) >= 2):
+        for letter in columnsAppend:
+            ws.merge_cells(
+                f'{letter}{row_count+1}:{letter}{row_count+lenOfExams}')
 
 
 def getNameCompanyInSheet() -> List:
@@ -385,15 +392,18 @@ def main():
     for i in range(20):
         companyList_BillingTeste.append(companyList_Billing[i])
 
-    # companyList_BillingTeste = [companyList_Billing[3]]
+    # companyList_BillingTeste = [companyList_Billing[49]]
     # ----------------------------------------------------
 
     namesOfCompanys = getNameCompanyInSheet()
 
     companys_not_found = 'Empresas não encontradas: '
     companyList = []
-    for company_Billing in companyList_BillingTeste:
-
+    numeroDaEmpresa = 0
+    for company_Billing in companyList_Billing:
+        numeroDaEmpresa += 1
+        print('Nome empresa', company_Billing.name)
+        print('Numero: ', numeroDaEmpresa, ' Nome empresa', company_Billing.name)
         newCompany = Company(company_Billing.name)
         newCompany.employees = []
 

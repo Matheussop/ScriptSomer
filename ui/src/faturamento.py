@@ -3,6 +3,7 @@ import math
 import locale
 import os
 
+
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import List
@@ -11,6 +12,7 @@ from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment, Border
 from openpyxl.styles import Side
 from unidecode import unidecode
 
+
 dictionary_exams = [
     ("CLINICO", "Clínico"),   ("AUDIO", "Audiometria"),
     ("HEMO", "Hemograma c/ Plaquetas"), ("AC METIL", "Ácido Metil Hipúrico"),
@@ -18,7 +20,17 @@ dictionary_exams = [
     ("AC METIL HIPURICO", "Ácido Metil Hipúrico"),
     ("RX DE TORAX", "Raio-x de Tórax"),
     ("AV PSICOSSOCIAL", "Avaliação Psicossocial"),
-    ("CLINICO EXTERNO", "Exame Clínico (in loco)")
+    ("AV PSICOLÓGICA", "Avaliação Psicológica"),
+    ("CLINICO EXTERNO", "Exame Clínico (in loco)"),
+    ("BIOMETRIA IMC", "Biometria"),
+    ("COLESTEROL LDL", "LDL Colesterol"),
+    ("LDL", "LDL Colesterol"),
+    ("COLESTEROL HDL", "HDL Colesterol"),
+    ("HDL", "HDL Colesterol"),
+    ("COLESTEROL VLDL", "VLDL Colesterol"),
+    ("VLDL", "VLDL Colesterol"),
+    ("AC Úrico", "Acido Úrico"),
+    ("RX DE COLUNA DORSAL", "Raio-x de Coluna Dorsal"),
 ]
 
 dictionary_company_names = [
@@ -346,227 +358,245 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
-def main():
-    # Carregando o arquivo de empresas do excel
-    workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
+class Faturamento:
+    yearText = ''
+    monthText = ''
+    folderText = ''
+    hasDetailed = False
 
-    name_month = 'JUNHO'
-    sheet_name_employees = f'{name_month} 2023'
+    def __init__(self, yearText, monthText, folderText, hasDetailed) -> None:
+        self.yearText = yearText
+        self.monthText = monthText
+        self.folderText = folderText
+        self.hasDetailed = hasDetailed
 
-    # Carregando o arquivo de exames realizados do excel
-    worksheet_employees: Worksheet = workbook_employees[sheet_name_employees]
+    async def generatedFiles(self) -> List[str]:
+        # Carregando o arquivo de empresas do excel
+        workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
 
-    billingList = []
-    for billing_row in worksheet_employees.iter_rows(min_row=2,
-                                                     values_only=True):
-        if (billing_row[0] is not None):
-            billingList.append(Billing(
-                # (Data exame, Name company)
-                str(billing_row[0]), str(billing_row[1]),
-                # (Name employee, Function Employee)
-                str(billing_row[2]), str(billing_row[3]),
-                # (Exams, Type Exam)
-                str(billing_row[4]), str(billing_row[5])))
+        name_month = self.monthText.upper()
+        year = str(self.yearText)
+        sheet_name_employees = f'{name_month} {year}'
 
-    companyList_Billing = []
-    for billing_row in billingList:
-        # if (i > 50):
-        #     continue
-        noHasCompany = True
-        # Para cada empresa criar uma instancia dela com o emprego caso ja
-        # exista adicionar apenas o empregado a ela.
-        for company in companyList_Billing:
-            newCompanyBilling = CompanyBilling()
-            if (billing_row.nameCompany == company.name):
+        # Carregando o arquivo de exames realizados do excel
+        worksheet_employees: Worksheet = \
+            workbook_employees[sheet_name_employees]
+
+        billingList = []
+        for billing_row in worksheet_employees.iter_rows(min_row=2,
+                                                         values_only=True):
+            if (billing_row[0] is not None):
+                billingList.append(Billing(
+                    # (Data exame, Name company)
+                    str(billing_row[0]), str(billing_row[1]),
+                    # (Name employee, Function Employee)
+                    str(billing_row[2]), str(billing_row[3]),
+                    # (Exams, Type Exam)
+                    str(billing_row[4]), str(billing_row[5])))
+
+        companyList_Billing = []
+        for billing_row in billingList:
+            # if (i > 50):
+            #     continue
+            noHasCompany = True
+            # Para cada empresa criar uma instancia dela com o emprego caso ja
+            # exista adicionar apenas o empregado a ela.
+            for company in companyList_Billing:
+                newCompanyBilling = CompanyBilling()
+                if (billing_row.nameCompany == company.name):
+                    employeesBillingAux = EmployeesBilling(
+                        billing_row.nameEmployees,
+                        billing_row.functionEmployees,
+                        billing_row.exams,
+                        data=billing_row.dataExam,
+                        typeExam=billing_row.typeExam)
+                    company.employeesBilling.append(employeesBillingAux)
+                    noHasCompany = False
+            if (noHasCompany):
                 employeesBillingAux = EmployeesBilling(
-                    billing_row.nameEmployees,
-                    billing_row.functionEmployees,
-                    billing_row.exams,
+                    name=billing_row.nameEmployees,
+                    function=billing_row.functionEmployees,
+                    exams=billing_row.exams,
                     data=billing_row.dataExam,
                     typeExam=billing_row.typeExam)
-                company.employeesBilling.append(employeesBillingAux)
-                noHasCompany = False
-        if (noHasCompany):
-            employeesBillingAux = EmployeesBilling(
-                name=billing_row.nameEmployees,
-                function=billing_row.functionEmployees,
-                exams=billing_row.exams,
-                data=billing_row.dataExam,
-                typeExam=billing_row.typeExam)
-            newCompanyBilling = CompanyBilling(
-                name=billing_row.nameCompany,
-                employeesBilling=[employeesBillingAux])
-            companyList_Billing.append(newCompanyBilling)
-        if (len(companyList_Billing) == 0):
-            newCompanyBilling = CompanyBilling()
-            employeesBillingAux = EmployeesBilling(
-                name=billing_row.nameEmployees,
-                function=billing_row.functionEmployees,
-                exams=billing_row.exams,
-                data=billing_row.dataExam,
-                typeExam=billing_row.typeExam)
-            newCompanyBilling = CompanyBilling(
-                name=billing_row.nameCompany,
-                employeesBilling=[employeesBillingAux])
-            companyList_Billing.append(newCompanyBilling)
+                newCompanyBilling = CompanyBilling(
+                    name=billing_row.nameCompany,
+                    employeesBilling=[employeesBillingAux])
+                companyList_Billing.append(newCompanyBilling)
+            if (len(companyList_Billing) == 0):
+                newCompanyBilling = CompanyBilling()
+                employeesBillingAux = EmployeesBilling(
+                    name=billing_row.nameEmployees,
+                    function=billing_row.functionEmployees,
+                    exams=billing_row.exams,
+                    data=billing_row.dataExam,
+                    typeExam=billing_row.typeExam)
+                newCompanyBilling = CompanyBilling(
+                    name=billing_row.nameCompany,
+                    employeesBilling=[employeesBillingAux])
+                companyList_Billing.append(newCompanyBilling)
 
-    # Bloco para testar numero x de empresas
-    companyList_BillingTeste = []
-    for i in range(10):
-        companyList_BillingTeste.append(companyList_Billing[i])
+        # Bloco para testar numero x de empresas
+        companyList_BillingTeste = []
+        for i in range(20):
+            companyList_BillingTeste.append(companyList_Billing[i])
 
-    # companyList_BillingTeste = [
-    #     companyList_Billing[0], companyList_Billing[49]]
-    # ----------------------------------------------------
+        companyList_BillingTeste = [companyList_Billing[76]]
+        # ----------------------------------------------------
 
-    namesOfCompanys = getNameCompanyInSheet()
+        namesOfCompanys = getNameCompanyInSheet()
+        companys_not_found = []
+        companys_not_found.append('\nEmpresas não encontradas: ')
+        companyList = []
+        numberOfCompany = 0
+        for company_Billing in companyList_BillingTeste:
+            numberOfCompany += 1
 
-    companys_not_found = '\nEmpresas não encontradas: '
-    companyList = []
-    numberOfCompany = 0
-    for company_Billing in companyList_Billing:
-        numberOfCompany += 1
+            showInTerminalCompanyNameNumber(company_Billing.name,
+                                            numberOfCompany)
 
-        # showInTerminalCompanyNameNumber(company_Billing.name,
-        #                                 numberOfCompany)
+            newCompany = Company(company_Billing.name)
+            newCompany.employees = []
 
-        newCompany = Company(company_Billing.name)
-        newCompany.employees = []
+            company_name_billing = unidecode(company_Billing.name.lower())
+            hasName = False
+            company_name = ''
+            for names in namesOfCompanys:
+                # Name of company
+                realNameOfCompany = unidecode(names[0].lower())
+                # Name of page sheet company
+                nameOfPageSheetCompany = unidecode(names[1].lower())
+                company_name_billing = company_name_billing.replace('ltda', '')
+                company_name_billing = company_name_billing.replace(
+                    'eireli', '')
+                realNameOfCompany = realNameOfCompany.replace('ltda', '')
+                realNameOfCompany = realNameOfCompany.replace('eireli', '')
+        # print('Empresa que tenho o sheet', realNameOfCompany,
+        #       '  | Empresa que ta na tabela de exames:', \
+            # company_name_billing)
 
-        company_name_billing = unidecode(company_Billing.name.lower())
-        hasName = False
-        company_name = ''
-        for names in namesOfCompanys:
-            # Name of company
-            realNameOfCompany = unidecode(names[0].lower())
-            # Name of page sheet company
-            nameOfPageSheetCompany = unidecode(names[1].lower())
-            company_name_billing = company_name_billing.replace('ltda', '')
-            company_name_billing = company_name_billing.replace('eireli', '')
-            realNameOfCompany = realNameOfCompany.replace('ltda', '')
-            realNameOfCompany = realNameOfCompany.replace('eireli', '')
-    # print('Empresa que tenho o sheet', realNameOfCompany,
-    #       '  | Empresa que ta na tabela de exames:', company_name_billing)
+                if ((realNameOfCompany in company_name_billing)
+                        or (nameOfPageSheetCompany in company_name_billing)):
+                    company_name = names[1]
+                    hasName = True
+                    break
+            if (not hasName):
+                companys_not_found.append('\n' + company_Billing.name)
+            else:
+                list_of_company = []
+                getExams(company_name, list_of_company, newCompany)
+                namesAndExams = []
 
-            if ((realNameOfCompany in company_name_billing)
-                    or (nameOfPageSheetCompany in company_name_billing)):
-                company_name = names[1]
-                hasName = True
-                break
-        if (not hasName):
-            companys_not_found = companys_not_found + \
-                '\n' + company_Billing.name
-        else:
-            list_of_company = []
-            getExams(company_name, list_of_company, newCompany)
-            namesAndExams = []
+                for employees in company_Billing.employeesBilling:
+                    namesAndExams.append(
+                        (employees.name, employees.exams, employees.function,
+                         employees.exams, employees.data, employees.typeExam))
 
-            for employees in company_Billing.employeesBilling:
-                namesAndExams.append(
-                    (employees.name, employees.exams, employees.function,
-                     employees.exams, employees.data, employees.typeExam))
-
-            for nameAndExam in namesAndExams:
-                dateFormatted = setDateXlsxToString(nameAndExam[4])
-                employee_company = Employee()
-                employee_company.name = nameAndExam[0]
-                employee_company.function = nameAndExam[2]
-                employee_company.exams = nameAndExam[3]
-                employee_company.typeExam = nameAndExam[5]
-                employee_company.date = dateFormatted
-                employee_company.examsCost = []
-                exams_exact = nameAndExam[1].split('/')
-
-                hasExam = False
-                for exam in exams_exact:
-                    exam = exam.strip()
-                    exam_compar = unidecode(exam.lower())
-                    for exam_significant in dictionary_exams:
-                        examDictionary = unidecode(exam_significant[0].lower())
-                        if (exam_compar == examDictionary):
-                            exam = exam_significant[1]
+                for nameAndExam in namesAndExams:
+                    dateFormatted = setDateXlsxToString(nameAndExam[4])
+                    employee_company = Employee()
+                    employee_company.name = nameAndExam[0]
+                    employee_company.function = nameAndExam[2]
+                    employee_company.exams = nameAndExam[3]
+                    employee_company.typeExam = nameAndExam[5]
+                    employee_company.date = dateFormatted
+                    employee_company.examsCost = []
+                    exams_exact = nameAndExam[1].split('/')
 
                     hasExam = False
-                    for company in list_of_company:
-                        if (unidecode(exam.lower())
-                                in unidecode(company[0].lower())
-                                and not hasExam):
-                            if (('externo' not in exam.lower() and
-                                    'externo' not in company[0].lower())):
-                                employee_company.cost += company[1]
-                                if (hasDetailed):
-                                    employee_company.examsCost.append(
-                                        (exam, company[1]))
-                                hasExam = True
-                    if (not hasExam):
-                        if (newCompany.missingExams == ''):
-                            auxStr = ""
-                            newCompany.missingExams = auxStr + exam
+                    for exam in exams_exact:
+                        exam = exam.strip()
+                        exam_compar = unidecode(exam.lower())
+                        for exam_significant in dictionary_exams:
+                            examDictionary = unidecode(
+                                exam_significant[0].lower())
+                            if (exam_compar == examDictionary):
+                                exam = exam_significant[1]
 
-                        elif (not (exam in newCompany.missingExams)):
-                            newCompany.missingExams = newCompany.missingExams \
-                                + ", " + exam
-                newCompany.employees.append(employee_company)
-            companyList.append(newCompany)
+                        hasExam = False
+                        for company in list_of_company:
+                            if (unidecode(exam.lower())
+                                    in unidecode(company[0].lower())
+                                    and not hasExam):
+                                print('Exame nome funcionario', company[0].lower(
+                                ), 'Exam nome tabela', exam.lower())
+                                if (('externo' not in exam.lower() and
+                                        'externo' not in company[0].lower())):
+                                    employee_company.cost += company[1]
+                                    if (self.hasDetailed):
+                                        employee_company.examsCost.append(
+                                            (exam, company[1]))
+                                    hasExam = True
+                        if (not hasExam):
+                            if (newCompany.missingExams == ''):
+                                auxStr = ""
+                                newCompany.missingExams = auxStr + exam
 
-    # showCompanyInTerminal(companyList)
+                            elif (not (exam in newCompany.missingExams)):
+                                newCompany.missingExams = \
+                                    newCompany.missingExams \
+                                    + ", " + exam
+                    newCompany.employees.append(employee_company)
+                companyList.append(newCompany)
 
-    if len(companyList) > 0:
+        # showCompanyInTerminal(companyList)
 
-        locale.setlocale(locale.LC_ALL, 'pt_BR')
-        monthNumber = datetime.strptime(name_month, '%B').month
-        try:
-            os.mkdir('Faturamentos')
-        except FileExistsError:
-            ...
-        except Exception as e:
-            print('Error ao criar a pasta', e)
+        if len(companyList) > 0:
 
-        for company in companyList:
-            wb: Workbook = Workbook()
-            styleXlsx(wb)
-            wb.remove(wb['Sheet'])
-            dataCompany = []
+            locale.setlocale(locale.LC_ALL, 'pt_BR')
+            monthNumber = datetime.strptime(name_month, '%B').month
+            try:
+                os.mkdir(f'{self.folderText}')
+            except FileExistsError:
+                ...
+            except Exception as e:
+                print('Error ao criar a pasta', e)
 
-            if (hasDetailed):
-                dataCompany = setContentDetailDataFrame(company.employees)
-            else:
-                dataCompany = setContentDataFrame(company.employees)
+            for company in companyList:
+                wb: Workbook = Workbook()
+                styleXlsx(wb)
+                wb.remove(wb['Sheet'])
+                dataCompany = []
 
-            ws: Worksheet = wb.create_sheet(company.name[:15])
-
-            mountStyleHeaderTable(monthNumber, ws, company.name)
-
-            # cost = 0
-            # cost = calculateCost(company)
-            # print(cost)
-            for item in dataCompany:
-                if (hasDetailed):
-                    addDetailDataFrame(ws, item)
+                if (self.hasDetailed):
+                    dataCompany = setContentDetailDataFrame(company.employees)
                 else:
-                    # Caso eu não tenha exames encontrados para esses empregado
-                    if (item[5] == 0):
-                        item[3] = '-'
-                        item[5] = '-'
-                    ws.append(item)
-            if (company.missingExams != ''):
-                showMissingExams(ws, company.missingExams)
-            mountStyleContentTable(ws)
-            setTotalCostRow(ws)
-            resizeTable(ws)
+                    dataCompany = setContentDataFrame(company.employees)
 
-            nameFile = f'{company.name} - {monthNumber} {name_month}'
-            wb.save(f'Faturamentos/Faturamento - {nameFile} 2023.xlsx')
+                ws: Worksheet = wb.create_sheet(company.name[:15])
 
-    print('Arquivos Gerados com sucesso')
-    print(companys_not_found)
+                mountStyleHeaderTable(monthNumber, ws, company.name)
 
-# ----------------------------------------------------------------
+                # cost = 0
+                # cost = calculateCost(company)
+                # print(cost)
+                for item in dataCompany:
+                    if (self.hasDetailed):
+                        addDetailDataFrame(ws, item)
+                    else:
+                        # Caso eu não tenha exames encontrados
+                        # para esses empregado
+                        if (item[5] == 0):
+                            item[3] = '-'
+                            item[5] = '-'
+                        ws.append(item)
+                if (company.missingExams != ''):
+                    showMissingExams(ws, company.missingExams)
+                mountStyleContentTable(ws)
+                setTotalCostRow(ws)
+                resizeTable(ws)
 
+                nameFile = f'{company.name} - {monthNumber} {name_month}'
+                folderAndName = f'{self.folderText}/Faturamento - {nameFile}'
+                wb.save(f'{folderAndName} 2023.xlsx')
 
-if __name__ == '__main__':
-    input = input("Deseja que a planilha seja detalhada ? (S/N)")
-    if (input.lower() == "s"):
-        hasDetailed = True
-    print('Gerando arquivos...')
-    main()
+        return companys_not_found
+
+    # ----------------------------------------------------------------
+
+# if __name__ == '__main__':
+#     input = input("Deseja que a planilha seja detalhada ? (S/N)")
+#     if (input.lower() == "s"):
+#         self.hasDetailed = True
+#     print('Gerando arquivos...')
+#     main()

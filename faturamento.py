@@ -32,18 +32,18 @@ class Employee:
     name: str
     exams: str
     function: str
-    data: str
+    date: str
     examsCost: List
     typeExam: str
 
     def __init__(self, examsCost: List = [], name: str = '', cost: float = 0.0,
-                 function: str = '', exams: str = '', data: str = '',
+                 function: str = '', exams: str = '', date: str = '',
                  typeExam: str = '',):
         self.name = name
         self.cost = cost
         self.function = function
         self.exams = exams
-        self.data = data
+        self.date = date
         self.typeExam = typeExam
         self.examsCost = examsCost
 
@@ -130,12 +130,8 @@ hasDetailed = False
 
 def getExams(company_name, list_of_company, newCompany):
     df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
-
-    table = df.iloc[3:, 0:8]
-    # tableOfCompany_ValueTeste = table.iloc[:, [0, 1]]
-    # print(tableOfCompany_ValueTeste)
-    tableOfCompany_Value = table.iloc[:, [0, 1]]
-    # for teste in testeFull:
+    # Get row 3 to infinity and Column A and B
+    tableOfCompany_Value = df.iloc[3:, [0, 1]]
     for exam in tableOfCompany_Value.values.tolist():
         if (str(exam[0]) == 'nan'):
             break
@@ -182,10 +178,10 @@ def styleXlsx(wb):
     wb.add_named_style(style_Cost)
 
 
-def setContentDataFrame(arrayUnformattedData: List) -> List:
+def setContentDataFrame(arrayUnformattedData: List[Employee]) -> List:
     data = []
     for employeesItem in arrayUnformattedData:
-        aux = [employeesItem.data,
+        aux = [employeesItem.date,
                employeesItem.name,
                employeesItem.function,
                employeesItem.exams,
@@ -195,7 +191,7 @@ def setContentDataFrame(arrayUnformattedData: List) -> List:
     return data
 
 
-def setContentDetailDataFrame(arrayUnformattedData: List) -> List:
+def setContentDetailDataFrame(arrayUnformattedData: List[Employee]) -> List:
     data = []
     for employeesItem in arrayUnformattedData:
         listOfExams = []
@@ -204,7 +200,7 @@ def setContentDetailDataFrame(arrayUnformattedData: List) -> List:
             listOfExams.append(examCost[0])  # name exam
             listOfCost.append(examCost[1])  # value exam
 
-        aux = [employeesItem.data,
+        aux = [employeesItem.date,
                employeesItem.name,
                employeesItem.function,
                listOfExams,
@@ -216,13 +212,15 @@ def setContentDetailDataFrame(arrayUnformattedData: List) -> List:
 
 def mountStyleHeaderTable(monthNumber: int, ws: Worksheet, companyName: str):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
-    # Header
+    # Cabeçalho da planilha
     ws.append([f'Mês {monthNumber:02}/23',
                companyName, '', '', '', 'Valor'])
+
     # Aplicando Header Styles
     for i in columnsTable:
         ws[f'{i}1'].style = 'style_header'
 
+    # Unindo a células onde ficara o nome da empresa
     ws.merge_cells('B1:E1')
 
 
@@ -230,7 +228,7 @@ def mountStyleContentTable(ws):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
     count_row = ws.max_row
 
-    # Conteúdo da tabela
+    # Definindo o estilo e formatação do conteúdo da tabela
     for i in range(0, count_row-1):
         for y in columnsTable:
             ws[f'{y}{i+2}'].style = 'style_content'
@@ -238,6 +236,7 @@ def mountStyleContentTable(ws):
             ws[f'{y}{i+2}'].alignment = Alignment(
                 horizontal="center", vertical="center")
             if (y == 'F'):
+                # Formula para forçar a ser um campo de dinheiro "BR"
                 number_forma = '"$"#,##0.00_);[Red]("$"#,##0.00)'
                 ws[f'{y}{i+2}'].number_format = number_forma
                 ws[f'{y}{i+2}'].alignment = Alignment(
@@ -269,6 +268,7 @@ def calculateCost(company) -> int:
 def setTotalCostStyle(ws):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
     row_count = ws.max_row
+    # Formula para forçar a ser um campo de dinheiro "BR"
     number_forma = '"$"#,##0.00_);[Red]("$"#,##0.00)'
     for letter in columnsTable:
         ws[f'{letter}{row_count}'].style = 'style_Cost'
@@ -276,8 +276,9 @@ def setTotalCostStyle(ws):
     ws[f'F{row_count}'].number_format = number_forma
 
 
-def setTotalCost(ws):
+def setTotalCostRow(ws):
     row_count = ws.max_row
+    # Espaços em branco pois será onde a célula sofrera um merge
     ws.append(['TOTAL', '', '', '', '', f"=SUM(F2: F{row_count})"])
     ws.merge_cells(f'A{row_count+1}:E{row_count+1}')
     setTotalCostStyle(ws)
@@ -285,9 +286,11 @@ def setTotalCost(ws):
 
 def addDetailDataFrame(ws, item):
     row_count = ws.max_row
+    # Tamanho da lista de exames feitos pelo funcionário
     lenOfExams = len(item[3])
     exams = item[3]
     examsCost = item[5]
+    # Caso não tenha nenhum exame limpa o campo.
     if (exams == []):
         exams.append("-")
         examsCost.append("-")
@@ -295,12 +298,13 @@ def addDetailDataFrame(ws, item):
     firstRow = [item[0], item[1], item[2], exams[0], item[4], examsCost[0]]
     ws.append(firstRow)
     for i in range(1, lenOfExams):
+        # Espaços em branco pois será onde a célula sofrera um merge
         ws.append(['', '', '',  exams[i], '', examsCost[i]])
 
-    columnsAppend = ['A', 'B', 'C', 'E']
+    columnsMerge = ['A', 'B', 'C', 'E']
     # merge_cells A, B, C, E
     if (len(exams) >= 2):
-        for letter in columnsAppend:
+        for letter in columnsMerge:
             ws.merge_cells(
                 f'{letter}{row_count+1}:{letter}{row_count+lenOfExams}')
 
@@ -324,18 +328,32 @@ def getNameCompanyInSheet() -> List:
 def showMissingExams(ws, missingExams):
     text = 'Esta empresa não tem o(s) seguintes exame(s) cadastrados: '
     ws.append([f'{text}', '', f'{missingExams}',
-              'missingExams2', 'missingExams3', 'missingExams4'])
+              '', '', ''])
     ws.merge_cells(f'A{ws.max_row}:B{ws.max_row}')
     ws.merge_cells(f'C{ws.max_row}:F{ws.max_row}')
 
 
+def showCompanyInTerminal(companyList: List[Company]):
+    for company in companyList:
+        print("========================================================")
+        print("COMPANY LIST: \n",  company)
+        print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
+        print("========================================================")
+
+
+def showInTerminalCompanyNameNumber(companyName, number):
+    print('Numero: ', number,
+          ' Nome empresa', companyName)
+
+
 def main():
-    # Carregando um arquivo do excel
+    # Carregando o arquivo de empresas do excel
     workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
 
     name_month = 'JUNHO'
     sheet_name_employees = f'{name_month} 2023'
 
+    # Carregando o arquivo de exames realizados do excel
     worksheet_employees: Worksheet = workbook_employees[sheet_name_employees]
 
     billingList = []
@@ -343,8 +361,11 @@ def main():
                                                      values_only=True):
         if (billing_row[0] is not None):
             billingList.append(Billing(
+                # (Data exame, Name company)
                 str(billing_row[0]), str(billing_row[1]),
+                # (Name employee, Function Employee)
                 str(billing_row[2]), str(billing_row[3]),
+                # (Exams, Type Exam)
                 str(billing_row[4]), str(billing_row[5])))
 
     companyList_Billing = []
@@ -352,6 +373,8 @@ def main():
         # if (i > 50):
         #     continue
         noHasCompany = True
+        # Para cada empresa criar uma instancia dela com o emprego caso ja
+        # exista adicionar apenas o empregado a ela.
         for company in companyList_Billing:
             newCompanyBilling = CompanyBilling()
             if (billing_row.nameCompany == company.name):
@@ -389,21 +412,24 @@ def main():
 
     # Bloco para testar numero x de empresas
     companyList_BillingTeste = []
-    for i in range(20):
+    for i in range(10):
         companyList_BillingTeste.append(companyList_Billing[i])
 
-    # companyList_BillingTeste = [companyList_Billing[49]]
+    # companyList_BillingTeste = [
+    #     companyList_Billing[0], companyList_Billing[49]]
     # ----------------------------------------------------
 
     namesOfCompanys = getNameCompanyInSheet()
 
-    companys_not_found = 'Empresas não encontradas: '
+    companys_not_found = '\nEmpresas não encontradas: '
     companyList = []
-    numeroDaEmpresa = 0
+    numberOfCompany = 0
     for company_Billing in companyList_Billing:
-        numeroDaEmpresa += 1
-        print('Nome empresa', company_Billing.name)
-        print('Numero: ', numeroDaEmpresa, ' Nome empresa', company_Billing.name)
+        numberOfCompany += 1
+
+        # showInTerminalCompanyNameNumber(company_Billing.name,
+        #                                 numberOfCompany)
+
         newCompany = Company(company_Billing.name)
         newCompany.employees = []
 
@@ -411,23 +437,25 @@ def main():
         hasName = False
         company_name = ''
         for names in namesOfCompanys:
-            namesAux = unidecode(names[0].lower())
-            namesAux2 = unidecode(names[1].lower())
+            # Name of company
+            realNameOfCompany = unidecode(names[0].lower())
+            # Name of page sheet company
+            nameOfPageSheetCompany = unidecode(names[1].lower())
             company_name_billing = company_name_billing.replace('ltda', '')
             company_name_billing = company_name_billing.replace('eireli', '')
-            namesAux = namesAux.replace('ltda', '')
-            namesAux = namesAux.replace('eireli', '')
-    # print('Empresa que tenho o sheet', namesAux,
+            realNameOfCompany = realNameOfCompany.replace('ltda', '')
+            realNameOfCompany = realNameOfCompany.replace('eireli', '')
+    # print('Empresa que tenho o sheet', realNameOfCompany,
     #       '  | Empresa que ta na tabela de exames:', company_name_billing)
 
-            if ((namesAux in company_name_billing)
-                    or (namesAux2 in company_name_billing)):
+            if ((realNameOfCompany in company_name_billing)
+                    or (nameOfPageSheetCompany in company_name_billing)):
                 company_name = names[1]
                 hasName = True
                 break
         if (not hasName):
-            companys_not_found = companys_not_found + '\
-              , \n' + company_Billing.name
+            companys_not_found = companys_not_found + \
+                '\n' + company_Billing.name
         else:
             list_of_company = []
             getExams(company_name, list_of_company, newCompany)
@@ -445,7 +473,7 @@ def main():
                 employee_company.function = nameAndExam[2]
                 employee_company.exams = nameAndExam[3]
                 employee_company.typeExam = nameAndExam[5]
-                employee_company.data = dateFormatted
+                employee_company.date = dateFormatted
                 employee_company.examsCost = []
                 exams_exact = nameAndExam[1].split('/')
 
@@ -481,12 +509,7 @@ def main():
                 newCompany.employees.append(employee_company)
             companyList.append(newCompany)
 
-    # for company in companyList:
-    #     print("========================================================")
-    #     print("COMPANY LIST: \n",  company)
-    #     # print("COMPANY LIST OF EMPLOYEES: \n", company.employeesList())
-    #     print("========================================================")
-    print(companys_not_found)
+    # showCompanyInTerminal(companyList)
 
     if len(companyList) > 0:
 
@@ -521,15 +544,22 @@ def main():
                 if (hasDetailed):
                     addDetailDataFrame(ws, item)
                 else:
+                    # Caso eu não tenha exames encontrados para esses empregado
+                    if (item[5] == 0):
+                        item[3] = '-'
+                        item[5] = '-'
                     ws.append(item)
             if (company.missingExams != ''):
                 showMissingExams(ws, company.missingExams)
             mountStyleContentTable(ws)
-            setTotalCost(ws)
+            setTotalCostRow(ws)
             resizeTable(ws)
 
             nameFile = f'{company.name} - {monthNumber} {name_month}'
             wb.save(f'Faturamentos/Faturamento - {nameFile} 2023.xlsx')
+
+    print('Arquivos Gerados com sucesso')
+    print(companys_not_found)
 
 # ----------------------------------------------------------------
 
@@ -538,4 +568,5 @@ if __name__ == '__main__':
     input = input("Deseja que a planilha seja detalhada ? (S/N)")
     if (input.lower() == "s"):
         hasDetailed = True
+    print('Gerando arquivos...')
     main()

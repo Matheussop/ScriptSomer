@@ -460,11 +460,11 @@ class Faturamento:
         companys_not_found.append('\nEmpresas não encontradas: ')
         companyList = []
         numberOfCompany = 0
-        for company_Billing in companyList_BillingTeste:
+        for company_Billing in companyList_Billing:
             numberOfCompany += 1
 
-            showInTerminalCompanyNameNumber(company_Billing.name,
-                                            numberOfCompany)
+            # showInTerminalCompanyNameNumber(company_Billing.name,
+            #                                 numberOfCompany)
 
             newCompany = Company(company_Billing.name)
             newCompany.employees = []

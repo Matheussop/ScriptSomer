@@ -5,7 +5,7 @@ import asyncio
 from faturamento import Faturamento
 from PySide6.QtWidgets import QApplication, QMainWindow
 from window import Ui_MainWindow
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -24,8 +24,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Set default month
         locale.setlocale(locale.LC_ALL, 'pt_BR')
-        monthText = datetime.now().strftime('%B')
-
+        # Get Last month
+        monthText = (date.today().replace(day=1) -
+                     timedelta(days=1)).strftime('%B')
         self.monthText.setTextMargins(10, 0, 0, 0)
         self.monthText.setText(monthText)
 
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.checkBoxDetail.setChecked(True)
 
         # Set button method
-        self.buttonSend.clicked.connect(self.teste)
+        self.buttonSend.clicked.connect(self.callGeneratedFiles)
 
     def callGeneratedFiles(self):
 

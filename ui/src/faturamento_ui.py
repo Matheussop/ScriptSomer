@@ -16,6 +16,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         # Create a Billing instance
         self.billing = Faturamento()
+        # Get a DictionaryExams data from a file
         self.billing.getDictionaryExams()
         # Set default year
         self.yearText.setTextMargins(10, 0, 0, 0)
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Set button method
         self.buttonSend.clicked.connect(self.callGeneratedFiles)
+        self.resultView.currentItemChanged.connect(self.printTeste)
 
     def callGeneratedFiles(self):
 
@@ -50,8 +52,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                       self.folderText.text(), isDetail)
 
         missingCompanys = asyncio.run(self.billing.generatedFiles())
-
+        # missingCompanys = [f'Teste {item}' for item in range(100)]
         self.resultView.addItems(missingCompanys)
+
+    def printTeste(self, teste):
+        print(f'Troquei de item selecionado {teste.text()}')
 
     def teste(self):
         if (self.folderText.text() == 'save'):
@@ -73,3 +78,5 @@ if __name__ == '__main__':
     mainWindow.show()
 
     app.exec()
+    # When exit app, save dictionary exams
+    sys.exit(mainWindow.saveExams())

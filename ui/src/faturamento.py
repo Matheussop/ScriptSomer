@@ -2,6 +2,7 @@ import pandas as pd
 import math
 import locale
 import os
+import json
 
 
 from openpyxl import Workbook, load_workbook
@@ -13,25 +14,25 @@ from openpyxl.styles import Side
 from unidecode import unidecode
 
 
-dictionary_exams = [
-    ("CLINICO", "Clínico"),   ("AUDIO", "Audiometria"),
-    ("HEMO", "Hemograma c/ Plaquetas"), ("AC METIL", "Ácido Metil Hipúrico"),
-    ("AC HIPURICO", "Ácido Hipúrico"), ("AC MANDELICO", "Ácido Mandélico"),
-    ("AC METIL HIPURICO", "Ácido Metil Hipúrico"),
-    ("RX DE TORAX", "Raio-x de Tórax"),
-    ("AV PSICOSSOCIAL", "Avaliação Psicossocial"),
-    ("AV PSICOLÓGICA", "Avaliação Psicológica"),
-    ("CLINICO EXTERNO", "Exame Clínico (in loco)"),
-    ("BIOMETRIA IMC", "Biometria"),
-    ("COLESTEROL LDL", "LDL Colesterol"),
-    ("LDL", "LDL Colesterol"),
-    ("COLESTEROL HDL", "HDL Colesterol"),
-    ("HDL", "HDL Colesterol"),
-    ("COLESTEROL VLDL", "VLDL Colesterol"),
-    ("VLDL", "VLDL Colesterol"),
-    ("AC Úrico", "Acido Úrico"),
-    ("RX DE COLUNA DORSAL", "Raio-x de Coluna Dorsal"),
-]
+# dictionary_exams = [
+#     ("CLINICO", "Clínico"),   ("AUDIO", "Audiometria"),
+#     ("HEMO", "Hemograma c/ Plaquetas"), ("AC METIL", "Ácido Metil Hipúrico"),
+#     ("AC HIPURICO", "Ácido Hipúrico"), ("AC MANDELICO", "Ácido Mandélico"),
+#     ("AC METIL HIPURICO", "Ácido Metil Hipúrico"),
+#     ("RX DE TORAX", "Raio-x de Tórax"),
+#     ("AV PSICOSSOCIAL", "Avaliação Psicossocial"),
+#     ("AV PSICOLÓGICA", "Avaliação Psicológica"),
+#     ("CLINICO EXTERNO", "Exame Clínico (in loco)"),
+#     ("BIOMETRIA IMC", "Biometria"),
+#     ("COLESTEROL LDL", "LDL Colesterol"),
+#     ("LDL", "LDL Colesterol"),
+#     ("COLESTEROL HDL", "HDL Colesterol"),
+#     ("HDL", "HDL Colesterol"),
+#     ("COLESTEROL VLDL", "VLDL Colesterol"),
+#     ("VLDL", "VLDL Colesterol"),
+#     ("AC Úrico", "Acido Úrico"),
+#     ("RX DE COLUNA DORSAL", "Raio-x de Coluna Dorsal"),
+# ]
 
 dictionary_company_names = [
     ("Minas Brasil", "BRASIL COMERCIAL"),
@@ -363,8 +364,18 @@ class Faturamento:
     monthText = ''
     folderText = ''
     hasDetailed = False
+    dictionary_exams = []
 
-    def __init__(self, yearText, monthText, folderText, hasDetailed) -> None:
+    def __init__(self, yearText='', monthText='', folderText='',
+                 hasDetailed=False, dictionary_exams=[]) -> None:
+        self.yearText = yearText
+        self.monthText = monthText
+        self.folderText = folderText
+        self.hasDetailed = hasDetailed
+        self.dictionary_exams = dictionary_exams
+
+    def setParamsBilling(self, yearText, monthText, folderText,
+                         hasDetailed) -> None:
         self.yearText = yearText
         self.monthText = monthText
         self.folderText = folderText
@@ -507,7 +518,7 @@ class Faturamento:
                     for exam in exams_exact:
                         exam = exam.strip()
                         exam_compar = unidecode(exam.lower())
-                        for exam_significant in dictionary_exams:
+                        for exam_significant in self.dictionary_exams:
                             examDictionary = unidecode(
                                 exam_significant[0].lower())
                             if (exam_compar == examDictionary):
@@ -518,8 +529,6 @@ class Faturamento:
                             if (unidecode(exam.lower())
                                     in unidecode(company[0].lower())
                                     and not hasExam):
-                                print('Exame nome funcionario', company[0].lower(
-                                ), 'Exam nome tabela', exam.lower())
                                 if (('externo' not in exam.lower() and
                                         'externo' not in company[0].lower())):
                                     employee_company.cost += company[1]
@@ -592,6 +601,21 @@ class Faturamento:
 
         return companys_not_found
 
+    def saveDictionaryExams(self):
+        with open('dictionary_exams.json', 'w', encoding='utf8') as arquivo:
+            json.dump(
+                self.dictionary_exams,
+                arquivo,
+                ensure_ascii=False,
+                indent=4,
+            )
+
+    def getDictionaryExams(self) -> List[tuple]:
+        newDictionary = []
+        with open('dictionary_exams.json', 'r', encoding='utf8') as arquivo:
+            newDictionary = json.load(arquivo)
+        self.dictionary_exams = newDictionary
+        return newDictionary
     # ----------------------------------------------------------------
 
 # if __name__ == '__main__':

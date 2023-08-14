@@ -1,0 +1,82 @@
+[
+    [
+        "CLINICO",
+        "Clínico"
+    ],
+    [
+        "AUDIO",
+        "Audiometria"
+    ],
+    [
+        "HEMO",
+        "Hemograma c/ Plaquetas"
+    ],
+    [
+        "AC METIL",
+        "Ácido Metil Hipúrico"
+    ],
+    [
+        "AC HIPURICO",
+        "Ácido Hipúrico"
+    ],
+    [
+        "AC MANDELICO",
+        "Ácido Mandélico"
+    ],
+    [
+        "AC METIL HIPURICO",
+        "Ácido Metil Hipúrico"
+    ],
+    [
+        "RX DE TORAX",
+        "Raio-x de Tórax"
+    ],
+    [
+        "AV PSICOSSOCIAL",
+        "Avaliação Psicossocial"
+    ],
+    [
+        "AV PSICOLÓGICA",
+        "Avaliação Psicológica"
+    ],
+    [
+        "CLINICO EXTERNO",
+        "Exame Clínico (in loco)"
+    ],
+    [
+        "BIOMETRIA IMC",
+        "Biometria"
+    ],
+    [
+        "COLESTEROL LDL",
+        "LDL Colesterol"
+    ],
+    [
+        "LDL",
+        "LDL Colesterol"
+    ],
+    [
+        "COLESTEROL HDL",
+        "HDL Colesterol"
+    ],
+    [
+        "HDL",
+        "HDL Colesterol"
+    ],
+    [
+        "COLESTEROL VLDL",
+        "VLDL Colesterol"
+    ],
+    [
+        "VLDL",
+        "VLDL Colesterol"
+    ],
+    [
+        "AC Úrico",
+        "Acido Úrico"
+    ],
+    [
+        "RX DE COLUNA DORSAL",
+        "Raio-x de Coluna Dorsal"
+    ]
+]

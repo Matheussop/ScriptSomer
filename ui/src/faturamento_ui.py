@@ -1,9 +1,11 @@
 import sys
 import locale
 import asyncio
+import os
 
 from faturamento import Faturamento
 from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtCore import Slot
 from window import Ui_MainWindow
 from datetime import datetime, date, timedelta
 
@@ -51,9 +53,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                       self.monthText.text(),
                                       self.folderText.text(), isDetail)
 
-        missingCompanys = asyncio.run(self.billing.generatedFiles())
+        self.billing.setEmployeesFile()
+        self.progressBar.setRange(0, self.billing.maxEmployees)
+        asyncio.run(self.billing.generatedBaseData())
+
+        companys = asyncio.run(self.generateFiles())
         # missingCompanys = [f'Teste {item}' for item in range(100)]
-        self.resultView.addItems(missingCompanys)
+        if len(companys) > 0:
+            try:
+                os.mkdir(f'{self.folderText.text()}')
+            except FileExistsError:
+                ...
+            except Exception as e:
+                print('Error ao criar a pasta', e)
+
+            asyncio.run(self.getAllExams(companys))
+            self.resultView.clear()
+            self.resultView.addItems('Finalizado')
 
     def printTeste(self, teste):
         print(f'Troquei de item selecionado {teste.text()}')
@@ -70,6 +86,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def getExams(self):
         dictionary_exams = self.billing.getDictionaryExams()
         return dictionary_exams
+
+    @Slot(int, int)
+    def on_progress(self, bytesReceived: int, bytesTotal: int):
+        """ Update progress bar"""
+        self.progressBar.setRange(0, bytesTotal)
+        self.progressBar.setValue(bytesReceived)
+
+    async def generateFiles(self):
+        companyListAux = []
+        for i, companyBilling in enumerate(self.billing.companyList_Billing):
+            companyListAux.append(self.billing.getCompanyList(companyBilling))
+            self.on_progress(i+1, len(self.billing.companyList_Billing))
+        return companyListAux
+
+    async def getAllExams(self, companyList):
+        locale.setlocale(locale.LC_ALL, 'pt_BR')
+        monthText: str = self.monthText.text()
+        monthNumber = datetime.strptime(monthText, '%B').month
+        for i, company in enumerate(companyList):
+            if len(company) > 0:
+                await self.billing.createSheet(company[0], monthText.upper(),
+                                               monthNumber)
+
+                self.on_progress(i+1, len(companyList))
 
 
 if __name__ == '__main__':

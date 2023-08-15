@@ -1,17 +1,33 @@
 import sys
 import locale
-import asyncio
-import os
+import re
 
 from faturamento import Faturamento
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Slot, QProcess, QByteArray
 from window import Ui_MainWindow
 from datetime import datetime, date, timedelta
 
 
+progress_re = re.compile("(\d+)")
+
+
+def simple_percent_parser(output):
+    """
+    Matches lines using the progress_re regex,
+    returning a single integer for the % progress.
+    """
+    m = progress_re.search(output)
+    if m:
+        pc_complete = m.group(1)
+        return int(pc_complete)
+
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     billing: Faturamento
+    max_row = 0
+    text = ''
+    p: QProcess
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,44 +57,64 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set default sheetDetail
         # self.checkBoxDetail.setChecked(True)
 
+        # Progress bar
+        self.p = None  # type: ignore
+
         # Set button method
-        self.buttonSend.clicked.connect(self.callGeneratedFiles)
+        self.buttonSend.clicked.connect(self.start_process)
         self.resultView.currentItemChanged.connect(self.printTeste)
 
-    def callGeneratedFiles(self):
+    def messageTerminal(self, s):
+        self.resultView.addItems([s])
 
-        isDetail = mainWindow.checkBoxDetail.isChecked()
+    def start_process(self):
+        if self.p is None:  # No process running.
+            # Keep a reference to the QProcess (e.g. on self)
+            # while it's running.
+            self.p = QProcess()
+            self.p.readyReadStandardOutput.connect(self.handle_stdout)
+            self.p.readyReadStandardError.connect(self.handle_stderr)
+            self.p.stateChanged.connect(self.handle_state)
+            # Clean up once complete.
+            isDetail = str(mainWindow.checkBoxDetail.isChecked())
 
-        self.billing.setParamsBilling(self.yearText.text(),
-                                      self.monthText.text(),
-                                      self.folderText.text(), isDetail)
+            self.p.finished.connect(self.process_finished)
+            self.p.start("python", ['faturamento.py', self.yearText.text(),
+                                    self.monthText.text(),
+                                    self.folderText.text(), isDetail])
 
-        self.billing.setEmployeesFile()
-        self.progressBar.setRange(0, self.billing.maxEmployees)
-        asyncio.run(self.billing.generatedBaseData())
+    def handle_state(self, state):
+        states = {
+            QProcess.NotRunning: 'Processo Finalizado',  # type: ignore
+            QProcess.Starting: 'Iniciando Processo',  # type: ignore
+            QProcess.Running: 'Gerando Arquivos',  # type: ignore
+        }
+        state_name = states[state]
+        self.messageTerminal(f"Status: {state_name}")
 
-        companys = asyncio.run(self.generateFiles())
-        # missingCompanys = [f'Teste {item}' for item in range(100)]
-        if len(companys) > 0:
-            try:
-                os.mkdir(f'{self.folderText.text()}')
-            except FileExistsError:
-                ...
-            except Exception as e:
-                print('Error ao criar a pasta', e)
+    def handle_stdout(self):
+        data = self.p.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")  # type: ignore
+        self.messageTerminal(stdout)
 
-            asyncio.run(self.getAllExams(companys))
-            self.resultView.clear()
-            self.resultView.addItems('Finalizado')
+    def handle_stderr(self):
+        data: QByteArray = self.p.readAllStandardError()
+        stderr = bytes(data).decode("utf8")  # type: ignore
+        # Extract progress if it is in the data.
+        progress = simple_percent_parser(stderr)
+        if isinstance(progress, int):
+            index = int(simple_percent_parser(stderr))  # type: ignore
+            if ('maxEmployees' in stderr):
+                self.progressBar.setRange(0, index)
+                self.max_row = index
+            elif index:
+                self.progressBar.setValue(index)
+
+    def process_finished(self):
+        self.p = None  # type: ignore
 
     def printTeste(self, teste):
         print(f'Troquei de item selecionado {teste.text()}')
-
-    def teste(self):
-        if (self.folderText.text() == 'save'):
-            self.saveExams()
-        else:
-            self.getExams()
 
     def saveExams(self):
         self.billing.saveDictionaryExams()
@@ -86,30 +122,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def getExams(self):
         dictionary_exams = self.billing.getDictionaryExams()
         return dictionary_exams
-
-    @Slot(int, int)
-    def on_progress(self, bytesReceived: int, bytesTotal: int):
-        """ Update progress bar"""
-        self.progressBar.setRange(0, bytesTotal)
-        self.progressBar.setValue(bytesReceived)
-
-    async def generateFiles(self):
-        companyListAux = []
-        for i, companyBilling in enumerate(self.billing.companyList_Billing):
-            companyListAux.append(self.billing.getCompanyList(companyBilling))
-            self.on_progress(i+1, len(self.billing.companyList_Billing))
-        return companyListAux
-
-    async def getAllExams(self, companyList):
-        locale.setlocale(locale.LC_ALL, 'pt_BR')
-        monthText: str = self.monthText.text()
-        monthNumber = datetime.strptime(monthText, '%B').month
-        for i, company in enumerate(companyList):
-            if len(company) > 0:
-                await self.billing.createSheet(company[0], monthText.upper(),
-                                               monthNumber)
-
-                self.on_progress(i+1, len(companyList))
 
 
 if __name__ == '__main__':

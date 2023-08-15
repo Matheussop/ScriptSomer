@@ -1,6 +1,10 @@
 import pandas as pd
 import math
 import json
+import locale
+import sys
+import asyncio
+import os
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -363,6 +367,7 @@ class Faturamento:
     hasDetailed = False
     dictionary_exams = []
     maxEmployees = 0
+    progress = 0
     worksheet_employees: Worksheet
     workbook_employees: Workbook
     namesOfCompanys = List[tuple]
@@ -397,9 +402,10 @@ class Faturamento:
         # Carregando o arquivo de exames realizados do excel
         self.worksheet_employees: Worksheet = \
             self.workbook_employees[sheet_name_employees]
-        self.maxEmployees = self.worksheet_employees.max_row
 
-    async def generatedBaseData(self):
+    def getCompanysNotFound(self): return self.companys_not_found
+
+    async def generatedBaseDataCompany(self):
         billingList = []
         for billing_row in \
             self.worksheet_employees.iter_rows(min_row=2,
@@ -415,6 +421,9 @@ class Faturamento:
 
         for billing_row in billingList:
             self.checkCompanys(billing_row)
+
+        self.maxEmployees = len(billingList)
+        sys.stderr.write(f'maxEmployees {len(billingList)}')
         # Bloco para testar numero x de empresas
         # companyList_BillingTeste = []
         # for i in range(20):
@@ -427,14 +436,6 @@ class Faturamento:
         self.namesOfCompanys = getNameCompanyInSheet()
         self.companys_not_found.append('\nEmpresas não encontradas: ')
 
-    # async def generatedFiles(self) -> tuple[List, List[str]]:
-    #     # showInTerminalCompanyNameNumber(company_Billing.name,
-    #     #                                 numberOfCompany)
-    #     companyList = self.getCompanyList(company_Billing)
-    #     print('Finalizei getCompanyList')
-    #     # showCompanyInTerminal(companyList)
-
-    #     return (companyList, self.companys_not_found)
     # ----------------------------------------------------------------
 
     def saveDictionaryExams(self):
@@ -472,6 +473,8 @@ class Faturamento:
         # cost = calculateCost(company)
         # print(cost)
         for item in dataCompany:
+            self.progress += 1
+            sys.stderr.write(f"Total complete: {self.progress}%\n")
             if (self.hasDetailed):
                 addDetailDataFrame(ws, item)
             else:
@@ -616,11 +619,51 @@ class Faturamento:
                 newCompany.employees.append(employee_company)
             companyListAux.append(newCompany)
         return companyListAux
+
     # ----------------------------------------------------------------
+
+    async def getAllExams(self, companyList):
+        locale.setlocale(locale.LC_ALL, 'pt_BR')
+        monthText: str = self.monthText
+        monthNumber = datetime.strptime(monthText, '%B').month
+        for i, company in enumerate(companyList):
+            if len(company) > 0:
+                await self.createSheet(company[0], monthText.upper(),
+                                       monthNumber)
+                self.progress += 1
+                sys.stderr.write(f" {self.progress}%\n")
+
+    async def generateFiles(self):
+        companyListAux = []
+        for i, companyBilling in enumerate(self.companyList_Billing):
+            companyListAux.append(self.getCompanyList(companyBilling))
+            self.progress += 1
+            sys.stderr.write(f" {self.progress}%\n")
+        return companyListAux
+
+    def callGeneratedFiles(self):
+        self.setEmployeesFile()
+        # self.progressBar.setRange(0, self.billing.maxEmployees)
+        asyncio.run(self.generatedBaseDataCompany())
+
+        companys = asyncio.run(self.generateFiles())
+        # missingCompanys = [f'Teste {item}' for item in range(100)]
+        if len(companys) > 0:
+            try:
+                os.mkdir(f'{self.folderText}')
+            except FileExistsError:
+                ...
+            except Exception:
+                sys.stdout.write(f'Error ao criar pasta {self.folderText}\n')
+
+        asyncio.run(self.getAllExams(companys))
 
 
 if __name__ == '__main__':
     billing = Faturamento()
-    print('Implementar...')
-
-    print('Finalizado')
+    isDetail = False
+    if (sys.argv[4] == 'True'):
+        isDetail = True
+    billing.setParamsBilling(sys.argv[1], sys.argv[2],
+                             sys.argv[3], isDetail)
+    billing.callGeneratedFiles()

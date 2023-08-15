@@ -184,7 +184,6 @@ class Ui_MainWindow(object):
 
         self.progressBar = QProgressBar(self.centralwidget)
         self.progressBar.setObjectName(u"progressBar")
-        self.progressBar.setValue(0)
 
         self.gridLayout.addWidget(self.progressBar, 9, 0, 1, 2)
 

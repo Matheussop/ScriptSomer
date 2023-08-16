@@ -2,6 +2,7 @@ import sys
 import locale
 import re
 
+from pprint import pprint
 from faturamento import Faturamento
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Slot, QProcess, QByteArray
@@ -9,7 +10,8 @@ from window import Ui_MainWindow
 from datetime import datetime, date, timedelta
 
 
-progress_re = re.compile("(\d+)")
+progress_re = re.compile("Total complete: (\d+)")
+max_re = re.compile("maxEmployees (\d+)")
 
 
 def simple_percent_parser(output):
@@ -21,6 +23,19 @@ def simple_percent_parser(output):
     if m:
         pc_complete = m.group(1)
         return int(pc_complete)
+
+
+def simple_max_row(output):
+    """
+    Matches lines using the progress_re regex,
+    returning a single integer for the % progress.
+    """
+    m = max_re.search(output)
+    if m:
+        max = m.group(1)
+        return int(max)
+    else:
+        return 0
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -79,10 +94,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Clean up once complete.
             isDetail = str(mainWindow.checkBoxDetail.isChecked())
 
+    # Ver sobre ->  self.p.setCurrentReadChannel
             self.p.finished.connect(self.process_finished)
-            self.p.start("python", ['faturamento.py', self.yearText.text(),
-                                    self.monthText.text(),
-                                    self.folderText.text(), isDetail])
+            self.p.start("python", ['faturamento.py',
+                                    f'-y{self.yearText.text()}',
+                                    f'-m{self.monthText.text()}',
+                                    f'-f{self.folderText.text()}',
+                                    f'-d{isDetail}'])
 
     def handle_state(self, state):
         states = {
@@ -95,6 +113,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def handle_stdout(self):
         data = self.p.readAllStandardOutput()
+        print(data)
         stdout = bytes(data).decode("utf8")  # type: ignore
         self.messageTerminal(stdout.split("\n"))
 
@@ -102,20 +121,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         data: QByteArray = self.p.readAllStandardError()
         stderr = bytes(data).decode("utf8")  # type: ignore
         # Extract progress if it is in the data.
-        progress = simple_percent_parser(stderr)
-        if isinstance(progress, int):
-            index = int(simple_percent_parser(stderr))  # type: ignore
-            if ('maxEmployees' in stderr):
-                self.progressBar.setRange(0, index)
-                self.max_row = index
-            elif index:
-                self.progressBar.setValue(index)
+        if ('maxEmployees' in stderr):
+            progress = simple_max_row(stderr)
+            self.progressBar.setRange(0, progress)
+            self.max_row = progress
+        else:
+            progress = simple_percent_parser(stderr)
+            if progress:
+                if isinstance(progress, int):
+                    self.progressBar.setValue(progress)
+            else:
+                self.messageTerminal([stderr])
 
     def process_finished(self):
         self.p = None  # type: ignore
 
     def printTeste(self, teste):
-        print(f'Troquei de item selecionado {teste.text()}')
+        objectPrint = f'Troquei de item selecionado {teste.text()}'
+        pprint(objectPrint)
 
     def saveExams(self):
         self.billing.saveDictionaryExams()

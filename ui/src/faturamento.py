@@ -6,6 +6,8 @@ import sys
 import asyncio
 import os
 
+from argparse import ArgumentParser
+from PySide6.QtCore import QProcess
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import List
@@ -425,9 +427,9 @@ class Faturamento:
         self.maxEmployees = len(billingList)
         sys.stderr.write(f'maxEmployees {len(billingList)}')
         # Bloco para testar numero x de empresas
-        # companyList_BillingTeste = []
+        # self.companyList_Billing = []
         # for i in range(20):
-        #     companyList_BillingTeste.append(companyList_Billing[i])
+        #     self.companyList_Billing.append(self.companyList_Billing[i])
 
         # self.companyList_Billing = [
         #     self.companyList_Billing[0], self.companyList_Billing[1]]
@@ -631,19 +633,18 @@ class Faturamento:
                 await self.createSheet(company[0], monthText.upper(),
                                        monthNumber)
                 self.progress += 1
-                sys.stderr.write(f" {self.progress}%\n")
+                sys.stderr.write(f"Total complete: {self.progress}%\n")
 
     async def generateFiles(self):
         companyListAux = []
         for i, companyBilling in enumerate(self.companyList_Billing):
             companyListAux.append(self.getCompanyList(companyBilling))
             self.progress += 1
-            sys.stderr.write(f" {self.progress}%\n")
+            sys.stderr.write(f"Total complete: {self.progress}%\n")
         return companyListAux
 
     def callGeneratedFiles(self):
         self.setEmployeesFile()
-        # self.progressBar.setRange(0, self.billing.maxEmployees)
         asyncio.run(self.generatedBaseDataCompany())
 
         companys = asyncio.run(self.generateFiles())
@@ -658,15 +659,34 @@ class Faturamento:
 
         asyncio.run(self.getAllExams(companys))
 
-        for company in self.companys_not_found:
-            sys.stdout.write(company)
+        if (len(self.companys_not_found) > 1):
+            sys.stdout.writelines(self.companys_not_found)
 
+
+parser = ArgumentParser()
+
+parser.add_argument("-y", "--year",
+                    type=str,
+                    help='Repassar o ano para a classe Billing')
+parser.add_argument("-m", "--month",
+                    type=str,
+                    help='Repassar o mês para a classe Billing')
+parser.add_argument("-f", "--folder",
+                    type=str,
+                    help='Repassa a pasta gerada para a classe Billing')
+parser.add_argument("-d", "--detail",
+                    type=bool,
+                    help='Repassa se as planilhas devem ser detalhadas')
+
+args = parser.parse_args()
 
 if __name__ == '__main__':
-    billing = Faturamento()
-    isDetail = False
-    if (sys.argv[4] == 'True'):
-        isDetail = True
-    billing.setParamsBilling(sys.argv[1], sys.argv[2],
-                             sys.argv[3], isDetail)
-    billing.callGeneratedFiles()
+    if (len(sys.argv) > 1):
+        billing = Faturamento()
+        isDetail = False
+        if (args.detail == 'True'):
+            isDetail = True
+        billing.setParamsBilling(args.year, args.month,
+                                 args.folder, isDetail)
+
+        billing.callGeneratedFiles()

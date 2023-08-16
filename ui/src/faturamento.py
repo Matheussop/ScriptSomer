@@ -658,6 +658,9 @@ class Faturamento:
 
         asyncio.run(self.getAllExams(companys))
 
+        for company in self.companys_not_found:
+            sys.stdout.write(company)
+
 
 if __name__ == '__main__':
     billing = Faturamento()

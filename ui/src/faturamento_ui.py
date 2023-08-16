@@ -65,10 +65,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.resultView.currentItemChanged.connect(self.printTeste)
 
     def messageTerminal(self, s):
-        self.resultView.addItems([s])
+        self.resultView.addItems(s)
 
     def start_process(self):
         if self.p is None:  # No process running.
+            self.resultView.clear()
             # Keep a reference to the QProcess (e.g. on self)
             # while it's running.
             self.p = QProcess()
@@ -90,12 +91,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QProcess.Running: 'Gerando Arquivos',  # type: ignore
         }
         state_name = states[state]
-        self.messageTerminal(f"Status: {state_name}")
+        self.messageTerminal([f"Status: {state_name}"])
 
     def handle_stdout(self):
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")  # type: ignore
-        self.messageTerminal(stdout)
+        self.messageTerminal(stdout.split("\n"))
 
     def handle_stderr(self):
         data: QByteArray = self.p.readAllStandardError()

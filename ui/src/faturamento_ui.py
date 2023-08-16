@@ -8,10 +8,19 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Slot, QProcess, QByteArray
 from window import Ui_MainWindow
 from datetime import datetime, date, timedelta
-
-
+from typing import List
+import json
 progress_re = re.compile("Total complete: (\d+)")
 max_re = re.compile("maxEmployees (\d+)")
+
+
+class Company:
+    name: str
+    missingExams: List[str]
+
+    def __init__(self, name, missingExams):
+        self.name = name
+        self.missingExams = missingExams
 
 
 def simple_percent_parser(output):
@@ -27,8 +36,8 @@ def simple_percent_parser(output):
 
 def simple_max_row(output):
     """
-    Matches lines using the progress_re regex,
-    returning a single integer for the % progress.
+    Matches lines using the max_re regex,
+    returning a single integer.
     """
     m = max_re.search(output)
     if m:
@@ -38,11 +47,22 @@ def simple_max_row(output):
         return 0
 
 
+def convertToClass(output) -> dict:
+    subObject = output.split(';')[1]
+    if subObject:
+        company_exam = subObject.replace("\'", "\"")
+        company_exam = json.loads(company_exam)
+        return (company_exam)
+    else:
+        return dict()
+
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     billing: Faturamento
     max_row = 0
     text = ''
     p: QProcess
+    companyExamNotFound: List[Company]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -74,6 +94,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Progress bar
         self.p = None  # type: ignore
+
+        # Reset a companyExamNotFound
+        self.companyExamNotFound = []
 
         # Set button method
         self.buttonSend.clicked.connect(self.start_process)
@@ -125,6 +148,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             progress = simple_max_row(stderr)
             self.progressBar.setRange(0, progress)
             self.max_row = progress
+        elif ("exam_not_found" in stderr):
+            self.addToExamsNotFound(stderr)
         else:
             progress = simple_percent_parser(stderr)
             if progress:
@@ -146,6 +171,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def getExams(self):
         dictionary_exams = self.billing.getDictionaryExams()
         return dictionary_exams
+
+    def addToExamsNotFound(self, company_examString):
+        company_examObject = convertToClass(company_examString)
+        newObjectCompany = Company(company_examObject['name'],
+                                   company_examObject['examsNotFound'])
+        self.companyExamNotFound.append(newObjectCompany)
 
 
 if __name__ == '__main__':

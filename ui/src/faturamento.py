@@ -7,7 +7,6 @@ import asyncio
 import os
 
 from argparse import ArgumentParser
-from PySide6.QtCore import QProcess
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import List
@@ -427,12 +426,13 @@ class Faturamento:
         self.maxEmployees = len(billingList)
         sys.stderr.write(f'maxEmployees {len(billingList)}')
         # Bloco para testar numero x de empresas
-        # self.companyList_Billing = []
-        # for i in range(20):
-        #     self.companyList_Billing.append(self.companyList_Billing[i])
+        companyList_BillingTeste = []
+        for i in range(20):
+            companyList_BillingTeste.append(self.companyList_Billing[i])
 
+        self.companyList_Billing = companyList_BillingTeste
         # self.companyList_Billing = [
-        #     self.companyList_Billing[0], self.companyList_Billing[1]]
+        #     self.companyList_Billing[2], self.companyList_Billing[3]]
         # ----------------------------------------------------
 
         self.namesOfCompanys = getNameCompanyInSheet()
@@ -620,6 +620,12 @@ class Faturamento:
                                 + ", " + exam
                 newCompany.employees.append(employee_company)
             companyListAux.append(newCompany)
+            companyExamNotfound = {
+                "name": newCompany.name,
+                "examsNotFound": newCompany.missingExams
+            }
+            if newCompany.missingExams != '':
+                sys.stderr.write(f"exam_not_found: ;{companyExamNotfound};")
         return companyListAux
 
     # ----------------------------------------------------------------

@@ -6,6 +6,7 @@ import sys
 import asyncio
 import os
 
+from PySide6.QtCore import QObject, Signal
 from argparse import ArgumentParser
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -361,24 +362,31 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
-class Faturamento:
+class Faturamento(QObject):
     yearText = ''
     monthText = ''
     folderText = ''
     hasDetailed = False
     dictionary_exams = []
     maxEmployees = 0
-    progress = 0
     worksheet_employees: Worksheet
     workbook_employees: Workbook
     namesOfCompanys = List[tuple]
     companys_not_found = []
     companyList = []
     companyList_Billing = []
+    started = Signal(str)
+    progressed = Signal(int)
+    finished = Signal(str)
+    rangeProgress = Signal(int)
+    progress = 0
 
-    def __init__(self, yearText='', monthText='', folderText='',
-                 hasDetailed=False, dictionary_exams=[],
-                 namesOfCompanys: List[tuple] = []) -> None:
+    def __init__(self, yearText='', monthText='',
+                 folderText='', hasDetailed=False,
+                 dictionary_exams=[],
+                 namesOfCompanys: List[tuple] = [],
+                 parent=None) -> None:
+        super().__init__(parent)
         self.yearText = yearText
         self.monthText = monthText
         self.folderText = folderText
@@ -424,13 +432,14 @@ class Faturamento:
             self.checkCompanys(billing_row)
 
         self.maxEmployees = len(billingList)
-        sys.stderr.write(f'maxEmployees {len(billingList)}')
-        # Bloco para testar numero x de empresas
-        companyList_BillingTeste = []
-        for i in range(20):
-            companyList_BillingTeste.append(self.companyList_Billing[i])
+        self.rangeProgress.emit(self.maxEmployees)
 
-        self.companyList_Billing = companyList_BillingTeste
+        # Bloco para testar numero x de empresas
+        # companyList_BillingTeste = []
+        # for i in range(20):
+        #     companyList_BillingTeste.append(self.companyList_Billing[i])
+
+        # self.companyList_Billing = companyList_BillingTeste
         # self.companyList_Billing = [
         #     self.companyList_Billing[2], self.companyList_Billing[3]]
         # ----------------------------------------------------
@@ -476,7 +485,7 @@ class Faturamento:
         # print(cost)
         for item in dataCompany:
             self.progress += 1
-            sys.stderr.write(f"Total complete: {self.progress}%\n")
+            self.progressed.emit(self.progress)
             if (self.hasDetailed):
                 addDetailDataFrame(ws, item)
             else:
@@ -620,12 +629,6 @@ class Faturamento:
                                 + ", " + exam
                 newCompany.employees.append(employee_company)
             companyListAux.append(newCompany)
-            companyExamNotfound = {
-                "name": newCompany.name,
-                "examsNotFound": newCompany.missingExams
-            }
-            if newCompany.missingExams != '':
-                sys.stderr.write(f"exam_not_found: ;{companyExamNotfound};")
         return companyListAux
 
     # ----------------------------------------------------------------
@@ -639,17 +642,18 @@ class Faturamento:
                 await self.createSheet(company[0], monthText.upper(),
                                        monthNumber)
                 self.progress += 1
-                sys.stderr.write(f"Total complete: {self.progress}%\n")
+                self.progressed.emit(self.progress)
 
     async def generateFiles(self):
         companyListAux = []
         for i, companyBilling in enumerate(self.companyList_Billing):
             companyListAux.append(self.getCompanyList(companyBilling))
             self.progress += 1
-            sys.stderr.write(f"Total complete: {self.progress}%\n")
+            self.progressed.emit(self.progress)
         return companyListAux
 
     def callGeneratedFiles(self):
+        self.started.emit('Processo iniciado...')
         self.setEmployeesFile()
         asyncio.run(self.generatedBaseDataCompany())
 
@@ -661,12 +665,11 @@ class Faturamento:
             except FileExistsError:
                 ...
             except Exception:
-                sys.stdout.write(f'Error ao criar pasta {self.folderText}\n')
+                print(f'Error ao criar pasta {self.folderText}\n')
 
         asyncio.run(self.getAllExams(companys))
 
-        if (len(self.companys_not_found) > 1):
-            sys.stdout.writelines(self.companys_not_found)
+        self.finished.emit('Processo finalizado.')
 
 
 parser = ArgumentParser()

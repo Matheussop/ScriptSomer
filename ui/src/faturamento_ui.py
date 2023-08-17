@@ -5,11 +5,12 @@ import re
 from pprint import pprint
 from faturamento import Faturamento
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import Slot, QProcess, QByteArray
+from PySide6.QtCore import Slot, QProcess, QThread
 from window import Ui_MainWindow
 from datetime import datetime, date, timedelta
 from typing import List
 import json
+
 progress_re = re.compile("Total complete: (\d+)")
 max_re = re.compile("maxEmployees (\d+)")
 
@@ -67,10 +68,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        # Create a Billing instance
-        self.billing = Faturamento()
-        # Get a DictionaryExams data from a file
-        self.billing.getDictionaryExams()
         # Set default year
         self.yearText.setTextMargins(10, 0, 0, 0)
         year = str(datetime.now().year)
@@ -92,38 +89,53 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set default sheetDetail
         # self.checkBoxDetail.setChecked(True)
 
-        # Progress bar
-        self.p = None  # type: ignore
+        # Billing instance
+        self.billing = None  # type: ignore
 
         # Reset a companyExamNotFound
         self.companyExamNotFound = []
 
         # Set button method
-        self.buttonSend.clicked.connect(self.start_process)
+        self.buttonSend.clicked.connect(self.startWorkerBilling)
         self.resultView.currentItemChanged.connect(self.printTeste)
 
     def messageTerminal(self, s):
         self.resultView.addItems(s)
 
-    def start_process(self):
-        if self.p is None:  # No process running.
-            self.resultView.clear()
-            # Keep a reference to the QProcess (e.g. on self)
-            # while it's running.
-            self.p = QProcess()
-            self.p.readyReadStandardOutput.connect(self.handle_stdout)
-            self.p.readyReadStandardError.connect(self.handle_stderr)
-            self.p.stateChanged.connect(self.handle_state)
-            # Clean up once complete.
-            isDetail = str(mainWindow.checkBoxDetail.isChecked())
+    def startWorkerBilling(self):
 
-    # Ver sobre ->  self.p.setCurrentReadChannel
-            self.p.finished.connect(self.process_finished)
-            self.p.start("python", ['faturamento.py',
-                                    f'-y{self.yearText.text()}',
-                                    f'-m{self.monthText.text()}',
-                                    f'-f{self.folderText.text()}',
-                                    f'-d{isDetail}'])
+        # Create a Billing instance
+        self.billing = Faturamento()
+        # Get a DictionaryExams data from a file
+        self.billing.getDictionaryExams()
+
+        self._thread = QThread()
+        isDetail = str(mainWindow.checkBoxDetail.isChecked())
+
+        self.billing.setParamsBilling(
+            self.yearText.text(), self.monthText.text(),
+            self.folderText.text(), isDetail)
+
+        worker = self.billing
+        thread = self._thread
+
+        # Mover o worker para a thread
+        worker.moveToThread(thread)
+
+        # Adicionar a thread ao processo (Run)
+        thread.started.connect(worker.callGeneratedFiles)
+
+        worker.finished.connect(thread.quit)
+
+        thread.finished.connect(thread.deleteLater)
+        worker.finished.connect(worker.deleteLater)
+
+        worker.started.connect(self.worker1Started)
+        worker.progressed.connect(self.worker1Progressed)
+        worker.finished.connect(self.worker1Finished)
+        worker.rangeProgress.connect(self.setRangeProgressBar)
+
+        thread.start()
 
     def handle_state(self, state):
         states = {
@@ -133,33 +145,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         }
         state_name = states[state]
         self.messageTerminal([f"Status: {state_name}"])
-
-    def handle_stdout(self):
-        data = self.p.readAllStandardOutput()
-        print(data)
-        stdout = bytes(data).decode("utf8")  # type: ignore
-        self.messageTerminal(stdout.split("\n"))
-
-    def handle_stderr(self):
-        data: QByteArray = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")  # type: ignore
-        # Extract progress if it is in the data.
-        if ('maxEmployees' in stderr):
-            progress = simple_max_row(stderr)
-            self.progressBar.setRange(0, progress)
-            self.max_row = progress
-        elif ("exam_not_found" in stderr):
-            self.addToExamsNotFound(stderr)
-        else:
-            progress = simple_percent_parser(stderr)
-            if progress:
-                if isinstance(progress, int):
-                    self.progressBar.setValue(progress)
-            else:
-                self.messageTerminal([stderr])
-
-    def process_finished(self):
-        self.p = None  # type: ignore
 
     def printTeste(self, teste):
         objectPrint = f'Troquei de item selecionado {teste.text()}'
@@ -177,6 +162,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         newObjectCompany = Company(company_examObject['name'],
                                    company_examObject['examsNotFound'])
         self.companyExamNotFound.append(newObjectCompany)
+
+    def worker1Started(self, value):
+        self.buttonSend.setDisabled(True)
+        self.messageTerminal([value])
+        print('worker iniciado')
+
+    def worker1Progressed(self, value):
+        self.progressBar.setValue(value)
+        print('em progresso')
+
+    def setRangeProgressBar(self, value):
+        self.progressBar.setRange(0, value)
+        print('Setado limite maximo', value)
+
+    def worker1Finished(self, value):
+        self.buttonSend.setDisabled(False)
+        self.messageTerminal([value])
+        print('worker finalizado')
 
 
 if __name__ == '__main__':

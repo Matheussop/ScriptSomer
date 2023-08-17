@@ -341,6 +341,10 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
+class CompanyShared:
+    companyList = []
+
+
 class Faturamento(QObject):
     yearText = ''
     monthText = ''
@@ -356,8 +360,9 @@ class Faturamento(QObject):
     companyList_Billing = []
     started = Signal(str)
     progressed = Signal(int)
-    finished = Signal(str)
+    finished = Signal(CompanyShared)
     rangeProgress = Signal(int)
+    companiesNotFound = Signal(list)
     progress = 0
 
     def __init__(self, yearText='', monthText='',
@@ -414,7 +419,7 @@ class Faturamento(QObject):
         # Bloco para testar numero x de empresas
         # companyList_BillingTeste = []
 
-        # for i in range(10):
+        # for i in range(30):
         #     companyList_BillingTeste.append(self.companyList_Billing[i])
 
         # self.companyList_Billing = companyList_BillingTeste
@@ -646,8 +651,11 @@ class Faturamento(QObject):
     def callGeneratedFiles(self):
         self.started.emit('Processo iniciado...')
         self.progress = 0
+        # Carregando dados do arquivo de exames realizados
         self.setEmployeesFile()
         asyncio.run(self.generatedBaseDataCompany())
+
+        # Definindo limite máximo da barra de progresso
         maxEmployeesAux = self.maxEmployees
         self.maxEmployees += len(self.companyList_Billing) - \
             len(self.companies_not_found)
@@ -658,7 +666,8 @@ class Faturamento(QObject):
 
         self.progress += maxEmployeesAux
         self.progressed.emit(self.progress)
-        # missingCompanies = [f'Teste {item}' for item in range(100)]
+
+        # Criando pasta que terá os arquivos de faturamentos
         if len(companies) > 0:
             try:
                 os.mkdir(f'{self.folderText}')
@@ -668,14 +677,27 @@ class Faturamento(QObject):
                 print(f'Error ao criar pasta {self.folderText}\n')
 
         # Progress Bar
-        self.maxEmployees += len(companies)
+        self.maxEmployees += len(companies) - len(self.companies_not_found)
         self.rangeProgress.emit(self.maxEmployees)
 
+        # Criando os arquivos de faturamentos e populando.
         asyncio.run(self.getAllExams(companies))
+        companiesList = []
+        for company in companies:
+            if company != []:
+                companiesList.append({
+                    'name': company[0].name,
+                    'missingExams': company[0].missingExams,
+                })
 
-        self.finished.emit('Processo finalizado.')
+        companyShared = CompanyShared()
+        companyShared.companyList = companiesList
+        # print(companiesList)
+        self.finished.emit(companyShared)
+        self.companiesNotFound.emit(self.companies_not_found)
 
 
+# Parâmetros necessários para executar o script independentemente.
 parser = ArgumentParser()
 
 parser.add_argument("-y", "--year",
@@ -688,7 +710,7 @@ parser.add_argument("-f", "--folder",
                     type=str,
                     help='Repassa a pasta gerada para a classe Billing')
 parser.add_argument("-d", "--detail",
-                    type=bool,
+                    action='store_true',
                     help='Repassa se as planilhas devem ser detalhadas')
 
 args = parser.parse_args()

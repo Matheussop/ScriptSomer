@@ -1,6 +1,5 @@
 import sys
 import locale
-import json
 
 from pprint import pprint
 from styles import setupTheme
@@ -11,14 +10,16 @@ from window import Ui_MainWindow
 from faturamento import Faturamento
 
 
-def convertToClass(output) -> dict:
-    subObject = output.split(';')[1]
-    if subObject:
-        company_exam = subObject.replace("\'", "\"")
-        company_exam = json.loads(company_exam)
-        return (company_exam)
-    else:
-        return dict()
+def convertToArray(companyList):
+    aux = []
+    for company in companyList:
+        aux.append(f"\n{company['name']}")
+        for exam in company['missingExams'].split(','):
+            if exam != '':
+                aux.append(f'    Exame faltando -> {exam}')
+            else:
+                aux.pop()
+    return aux
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -94,9 +95,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         thread.finished.connect(thread.deleteLater)
         worker.finished.connect(worker.deleteLater)
 
-        worker.started.connect(self.worker1Started)
-        worker.progressed.connect(self.worker1Progressed)
-        worker.finished.connect(self.worker1Finished)
+        worker.started.connect(self.workerBillingStarted)
+        worker.progressed.connect(self.workerBillingProgressed)
+        worker.finished.connect(self.workerBillingFinished)
+        worker.companiesNotFound.connect(self.workerBillingCompaniesNotFound)
         worker.rangeProgress.connect(self.setRangeProgressBar)
 
         thread.start()
@@ -120,13 +122,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.billing.saveDictionaryExams()
 
     @Slot()
-    def worker1Started(self, value):
+    def workerBillingStarted(self, value):
         self.buttonSend.setDisabled(True)
         self.messageTerminal([value])
         print('worker iniciado')
 
     @Slot()
-    def worker1Progressed(self, value):
+    def workerBillingProgressed(self, value):
         self.progressBar.setValue(value)
         # print('em progresso')
 
@@ -135,10 +137,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.progressBar.setRange(0, value)
 
     @Slot()
-    def worker1Finished(self, value):
+    def workerBillingFinished(self, value):
         self.buttonSend.setDisabled(False)
-        self.messageTerminal([value])
+        if value != []:
+            results = convertToArray(value.companyList)
+            self.messageTerminal(['\nEmpresas com exames não encontrados'])
+            self.messageTerminal(results)
+            self.messageTerminal(['\nPrograma finalizado'])
         print('worker finalizado')
+
+    @Slot()
+    def workerBillingCompaniesNotFound(self, value):
+        if value != []:
+            self.messageTerminal(value)
 
 
 if __name__ == '__main__':

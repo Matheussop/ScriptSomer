@@ -1,51 +1,14 @@
 import sys
 import locale
-import re
+import json
 
 from pprint import pprint
-from faturamento import Faturamento
+from styles import setupTheme
+from datetime import datetime, date, timedelta
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Slot, QProcess, QThread
 from window import Ui_MainWindow
-from datetime import datetime, date, timedelta
-from typing import List
-import json
-
-progress_re = re.compile("Total complete: (\d+)")
-max_re = re.compile("maxEmployees (\d+)")
-
-
-class Company:
-    name: str
-    missingExams: List[str]
-
-    def __init__(self, name, missingExams):
-        self.name = name
-        self.missingExams = missingExams
-
-
-def simple_percent_parser(output):
-    """
-    Matches lines using the progress_re regex,
-    returning a single integer for the % progress.
-    """
-    m = progress_re.search(output)
-    if m:
-        pc_complete = m.group(1)
-        return int(pc_complete)
-
-
-def simple_max_row(output):
-    """
-    Matches lines using the max_re regex,
-    returning a single integer.
-    """
-    m = max_re.search(output)
-    if m:
-        max = m.group(1)
-        return int(max)
-    else:
-        return 0
+from faturamento import Faturamento
 
 
 def convertToClass(output) -> dict:
@@ -63,7 +26,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     max_row = 0
     text = ''
     p: QProcess
-    companyExamNotFound: List[Company]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -102,15 +64,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def messageTerminal(self, s):
         self.resultView.addItems(s)
 
+    @Slot()
     def startWorkerBilling(self):
 
         # Create a Billing instance
         self.billing = Faturamento()
+
         # Get a DictionaryExams data from a file
         self.billing.getDictionaryExams()
 
         self._thread = QThread()
-        isDetail = str(mainWindow.checkBoxDetail.isChecked())
+        isDetail = mainWindow.checkBoxDetail.isChecked()
 
         self.billing.setParamsBilling(
             self.yearText.text(), self.monthText.text(),
@@ -146,36 +110,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         state_name = states[state]
         self.messageTerminal([f"Status: {state_name}"])
 
+    @Slot()
     def printTeste(self, teste):
         objectPrint = f'Troquei de item selecionado {teste.text()}'
         pprint(objectPrint)
 
     def saveExams(self):
-        self.billing.saveDictionaryExams()
+        if self.billing:
+            self.billing.saveDictionaryExams()
 
-    def getExams(self):
-        dictionary_exams = self.billing.getDictionaryExams()
-        return dictionary_exams
-
-    def addToExamsNotFound(self, company_examString):
-        company_examObject = convertToClass(company_examString)
-        newObjectCompany = Company(company_examObject['name'],
-                                   company_examObject['examsNotFound'])
-        self.companyExamNotFound.append(newObjectCompany)
-
+    @Slot()
     def worker1Started(self, value):
         self.buttonSend.setDisabled(True)
         self.messageTerminal([value])
         print('worker iniciado')
 
+    @Slot()
     def worker1Progressed(self, value):
         self.progressBar.setValue(value)
-        print('em progresso')
+        # print('em progresso')
 
+    @Slot()
     def setRangeProgressBar(self, value):
         self.progressBar.setRange(0, value)
-        print('Setado limite maximo', value)
 
+    @Slot()
     def worker1Finished(self, value):
         self.buttonSend.setDisabled(False)
         self.messageTerminal([value])
@@ -185,6 +144,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     mainWindow = MainWindow()
+    setupTheme()
     mainWindow.show()
 
     app.exec()

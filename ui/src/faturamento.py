@@ -118,8 +118,8 @@ class Billing:
 # ROOT_FOLDER = Path(__file__).parent
 # WORKBOOK_PATH_COMPANY = ROOT_FOLDER / 'ValoresEmpresas.xlsx'
 # WORKBOOK_PATH_FUNC = ROOT_FOLDER / 'examesRealizados.xlsx'
-WORKBOOK_PATH_COMPANY = './ValoresEmpresas.xlsx'
-WORKBOOK_PATH_FUNC = './examesRealizados.xlsx'
+WORKBOOK_PATH_COMPANY = './files/ValoresEmpresas.xlsx'
+WORKBOOK_PATH_FUNC = './files/examesRealizados.xlsx'
 hasDetailed = False
 
 
@@ -341,10 +341,6 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
-class CompanyShared:
-    companyList = []
-
-
 class Faturamento(QObject):
     yearText = ''
     monthText = ''
@@ -360,7 +356,7 @@ class Faturamento(QObject):
     companyList_Billing = []
     started = Signal(str)
     progressed = Signal(int)
-    finished = Signal(CompanyShared)
+    finished = Signal(list)
     rangeProgress = Signal(int)
     companiesNotFound = Signal(list)
     progress = 0
@@ -438,7 +434,9 @@ class Faturamento(QObject):
     # ----------------------------------------------------------------
 
     def saveDictionaryExams(self):
-        with open('dictionary_exams.json', 'w', encoding='utf8') as arquivo:
+        pathFile = './files/dictionary_exams.json'
+
+        with open(pathFile, 'w', encoding='utf8') as arquivo:
             json.dump(
                 self.dictionary_exams,
                 arquivo,
@@ -448,7 +446,8 @@ class Faturamento(QObject):
 
     def getDictionaryExams(self) -> List[tuple]:
         newDictionary = []
-        with open('dictionary_exams.json', 'r', encoding='utf8') as arquivo:
+        pathFile = './files/dictionary_exams.json'
+        with open(pathFile, 'r', encoding='utf8') as arquivo:
             newDictionary = json.load(arquivo)
         self.dictionary_exams = newDictionary
         return newDictionary
@@ -690,10 +689,8 @@ class Faturamento(QObject):
                     'missingExams': company[0].missingExams,
                 })
 
-        companyShared = CompanyShared()
-        companyShared.companyList = companiesList
         # print(companiesList)
-        self.finished.emit(companyShared)
+        self.finished.emit(companiesList)
         self.companiesNotFound.emit(self.companies_not_found)
 
 

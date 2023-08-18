@@ -140,7 +140,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def workerBillingFinished(self, value):
         self.buttonSend.setDisabled(False)
         if value != []:
-            results = convertToArray(value.companyList)
+            results = convertToArray(value)
             self.messageTerminal(['\nEmpresas com exames não encontrados'])
             self.messageTerminal(results)
             self.messageTerminal(['\nPrograma finalizado'])

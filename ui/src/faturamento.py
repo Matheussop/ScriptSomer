@@ -22,6 +22,10 @@ dictionary_company_names = [
 ]
 
 
+class ErrorBilling(Exception):
+    ...
+
+
 class Employee:
     cost: float
     name: str
@@ -124,18 +128,23 @@ hasDetailed = False
 
 
 def getExams(company_name, list_of_company, newCompany):
-    df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
-    # Get row 3 to infinity and Column A and B
-    tableOfCompany_Value = df.iloc[3:, [0, 1]]
-    for exam in tableOfCompany_Value.values.tolist():
-        if (str(exam[0]) == 'nan'):
-            break
-        if (exam[0] is not None):
-            list_of_company.append((exam[0], exam[1]))
-            if (newCompany.exams != ''):
-                newCompany.exams = newCompany.exams + ", " + str(exam[0])
-            else:
-                newCompany.exams = str(exam[0])
+    try:
+        df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
+        # Get row 3 to infinity and Column A and B
+        tableOfCompany_Value = df.iloc[3:, [0, 1]]
+        for exam in tableOfCompany_Value.values.tolist():
+            if (str(exam[0]) == 'nan'):
+                break
+            if (exam[0] is not None):
+                list_of_company.append((exam[0], exam[1]))
+                if (newCompany.exams != ''):
+                    newCompany.exams = newCompany.exams + ", " + str(exam[0])
+                else:
+                    newCompany.exams = str(exam[0])
+    except Exception:
+        exception_ = ErrorBilling(
+            f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
+        raise exception_
 
 
 def setDateXlsxToString(dataInXlsx) -> str:
@@ -305,8 +314,12 @@ def addDetailDataFrame(ws, item):
 
 
 def getNameCompanyInSheet() -> List[tuple]:
-    workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
-
+    try:
+        workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
+    except Exception:
+        exception_ = ErrorBilling(
+            f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
+        raise exception_
     # Percorrer o sheet e pegar o nome da empresa dentro da tabela
     names_of_workbook = workbook_company.sheetnames
     namesOfCompanies: List[tuple] = []
@@ -382,15 +395,29 @@ class Faturamento(QObject):
         self.hasDetailed = hasDetailed
 
     def setEmployeesFile(self):
-        # Carregando o arquivo de empresas do excel
-        self.workbook_employees: Workbook = load_workbook(WORKBOOK_PATH_FUNC)
+        try:
+            # Carregando o arquivo de empresas do excel
+            self.workbook_employees: Workbook = load_workbook(
+                WORKBOOK_PATH_FUNC)
+        except Exception:
+            exception_ = ErrorBilling(
+                f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
+            raise exception_
 
         name_month = self.monthText.upper()
         year = str(self.yearText)
         sheet_name_employees = f'{name_month} {year}'
         # Carregando o arquivo de exames realizados do excel
-        self.worksheet_employees: Worksheet = \
-            self.workbook_employees[sheet_name_employees]
+        try:
+            self.worksheet_employees: Worksheet = \
+                self.workbook_employees[sheet_name_employees]
+        except Exception:
+            error = f'Error ao tentar encontrar '\
+                'uma página da planilha chamada ' \
+                f'{sheet_name_employees}'
+            exception_ = ErrorBilling(error)
+
+            raise exception_
 
     def getCompaniesNotFound(self): return self.companies_not_found
 
@@ -648,50 +675,59 @@ class Faturamento(QObject):
         return companyListAux
 
     def callGeneratedFiles(self):
-        self.started.emit('Processo iniciado...')
-        self.progress = 0
-        # Carregando dados do arquivo de exames realizados
-        self.setEmployeesFile()
-        asyncio.run(self.generatedBaseDataCompany())
+        try:
+            self.started.emit('Processo iniciado...')
+            self.progress = 0
+            # Carregando dados do arquivo de exames realizados
+            self.setEmployeesFile()
+            asyncio.run(self.generatedBaseDataCompany())
 
-        # Definindo limite máximo da barra de progresso
-        maxEmployeesAux = self.maxEmployees
-        self.maxEmployees += len(self.companyList_Billing) - \
-            len(self.companies_not_found)
+            # Definindo limite máximo da barra de progresso
+            maxEmployeesAux = self.maxEmployees
+            self.maxEmployees += len(self.companyList_Billing) - \
+                len(self.companies_not_found)
 
-        # Progress Bar
-        self.rangeProgress.emit(self.maxEmployees)
-        companies = asyncio.run(self.generateFiles())
+            # Progress Bar
+            self.rangeProgress.emit(self.maxEmployees)
+            companies = asyncio.run(self.generateFiles())
 
-        self.progress += maxEmployeesAux
-        self.progressed.emit(self.progress)
+            self.progress += maxEmployeesAux
+            self.progressed.emit(self.progress)
 
-        # Criando pasta que terá os arquivos de faturamentos
-        if len(companies) > 0:
-            try:
-                os.mkdir(f'{self.folderText}')
-            except FileExistsError:
-                ...
-            except Exception:
-                print(f'Error ao criar pasta {self.folderText}\n')
+            # Criando pasta que terá os arquivos de faturamentos
+            if len(companies) > 0:
+                try:
+                    os.mkdir(f'{self.folderText}')
+                except FileExistsError:
+                    ...
+                except Exception:
+                    exception_ = ErrorBilling(
+                        f'Error ao criar pasta {self.folderText}\n')
+                    raise exception_
 
-        # Progress Bar
-        self.maxEmployees += len(companies) - len(self.companies_not_found)
-        self.rangeProgress.emit(self.maxEmployees)
+            # Progress Bar
+            self.maxEmployees += len(companies) - len(self.companies_not_found)
+            self.rangeProgress.emit(self.maxEmployees)
 
-        # Criando os arquivos de faturamentos e populando.
-        asyncio.run(self.getAllExams(companies))
-        companiesList = []
-        for company in companies:
-            if company != []:
-                companiesList.append({
-                    'name': company[0].name,
-                    'missingExams': company[0].missingExams,
-                })
+            # Criando os arquivos de faturamentos e populando.
+            asyncio.run(self.getAllExams(companies))
+            companiesList = []
+            for company in companies:
+                if company != []:
+                    companiesList.append({
+                        'name': company[0].name,
+                        'missingExams': company[0].missingExams,
+                    })
 
-        # print(companiesList)
-        self.finished.emit(companiesList)
-        self.companiesNotFound.emit(self.companies_not_found)
+            # print(companiesList)
+            self.finished.emit(companiesList)
+            self.companiesNotFound.emit(self.companies_not_found)
+
+            self.progress += maxEmployeesAux
+            self.progressed.emit(self.progress)
+        except ErrorBilling as errorBilling:
+            exception_ = 'Ocorreu um error durante a geração'
+            self.finished.emit(['Error: ', errorBilling])
 
 
 # Parâmetros necessários para executar o script independentemente.

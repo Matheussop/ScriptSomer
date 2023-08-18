@@ -140,10 +140,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def workerBillingFinished(self, value):
         self.buttonSend.setDisabled(False)
         if value != []:
-            results = convertToArray(value)
-            self.messageTerminal(['\nEmpresas com exames não encontrados'])
-            self.messageTerminal(results)
-            self.messageTerminal(['\nPrograma finalizado'])
+            if 'Error: ' != value[0]:
+                results = convertToArray(value)
+                self.messageTerminal(['\nEmpresas com exames não encontrados'])
+                self.messageTerminal(results)
+                self.messageTerminal(['\nPrograma finalizado'])
+            else:
+                print('valor de value: ', value)
+                self.messageTerminal([f'\n{value[1]}'])
         print('worker finalizado')
 
     @Slot()
@@ -155,6 +159,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     mainWindow = MainWindow()
+    mainWindow.setWindowTitle('Calculadora de Faturamento')
     setupTheme()
     mainWindow.show()
 

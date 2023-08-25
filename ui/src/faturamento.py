@@ -128,20 +128,24 @@ hasDetailed = False
 
 
 def getExams(company_name, list_of_company, newCompany):
+    ROW_START = 3
+    COLUMN_INDEX = [0, 1]
     try:
         df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
         # Get row 3 to infinity and Column A and B
-        tableOfCompany_Value = df.iloc[3:, [0, 1]]
+        tableOfCompany_Value = df.iloc[ROW_START:, COLUMN_INDEX]
+        exams = []
         for exam in tableOfCompany_Value.values.tolist():
-            if (str(exam[0]) == 'nan'):
+            if pd.isna(exam[0]):
                 break
             if (exam[0] is not None):
-                list_of_company.append((exam[0], exam[1]))
+                exams.append((exam[0], exam[1]))
                 if (newCompany.exams != ''):
                     newCompany.exams = newCompany.exams + ", " + str(exam[0])
                 else:
                     newCompany.exams = str(exam[0])
-    except Exception:
+        list_of_company.extend(exams)
+    except FileNotFoundError:
         exception_ = ErrorBilling(
             f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
         raise exception_
@@ -214,10 +218,11 @@ def setContentDetailDataFrame(arrayUnformattedData: List[Employee]) -> List:
     return data
 
 
-def mountStyleHeaderTable(monthNumber: int, ws: Worksheet, companyName: str):
+def mountStyleHeaderTable(yearText: str, monthNumber: int, ws: Worksheet, companyName: str):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
+
     # Cabeçalho da planilha
-    ws.append([f'Mês {monthNumber:02}/23',
+    ws.append([f'Mês {monthNumber:02}/{int(yearText[2:])}',
                companyName, '', '', '', 'Valor'])
 
     # Aplicando Header Styles
@@ -492,7 +497,7 @@ class Faturamento(QObject):
 
         ws: Worksheet = wb.create_sheet(company.name[:15])
 
-        mountStyleHeaderTable(monthNumber, ws, company.name)
+        mountStyleHeaderTable(self.yearText, monthNumber, ws, company.name)
 
         # cost = 0
         # cost = calculateCost(company)
@@ -517,7 +522,7 @@ class Faturamento(QObject):
 
         nameFile = f'{company.name} - {monthNumber} {monthText}'
         folderAndName = f'{self.folderText}/Faturamento - {nameFile}'
-        wb.save(f'{folderAndName} 2023.xlsx')
+        wb.save(f'{folderAndName} {self.yearText}.xlsx')
 
     def checkCompanies(self, billing_row):
         # if (i > 50):

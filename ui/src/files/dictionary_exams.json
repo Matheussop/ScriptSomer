@@ -78,5 +78,21 @@
     [
         "RX DE COLUNA DORSAL",
         "Raio-x de Coluna Dorsal"
+    ],
+    [
+        "AV OFTALMOLOGICA",
+        "Avaliação Oftalmológica"
+    ],
+    [
+        "AC TRANSMUCONICO",
+        "Ácido Transmucônico"
+    ],
+    [
+        "AC FENILGLIOXILICO",
+        "Ácido Fenilglioxílico"
+    ],
+    [
+        "QUESTIONARIO EPILEPSIA",
+        "Questionário de Epilepsia"
     ]
 ]

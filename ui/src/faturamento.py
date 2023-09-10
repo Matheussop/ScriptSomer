@@ -218,7 +218,8 @@ def setContentDetailDataFrame(arrayUnformattedData: List[Employee]) -> List:
     return data
 
 
-def mountStyleHeaderTable(yearText: str, monthNumber: int, ws: Worksheet, companyName: str):
+def mountStyleHeaderTable(yearText: str, monthNumber: int, ws: Worksheet,
+                          companyName: str):
     columnsTable = ['A', 'B', 'C', 'D', 'E', 'F']
 
     # Cabeçalho da planilha

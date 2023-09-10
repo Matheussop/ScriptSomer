@@ -114,7 +114,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot()
     def printTeste(self, teste):
-        objectPrint = f'Troquei de item selecionado {teste.text()}'
+        objectPrint = f'{teste.text()}'
         pprint(objectPrint)
 
     def saveExams(self):

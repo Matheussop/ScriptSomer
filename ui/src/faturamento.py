@@ -447,7 +447,7 @@ class Faturamento(QObject):
         # Bloco para testar numero x de empresas
         # companyList_BillingTeste = []
 
-        # for i in range(30):
+        # for i in range(2):
         #     companyList_BillingTeste.append(self.companyList_Billing[i])
 
         # self.companyList_Billing = companyList_BillingTeste
@@ -617,9 +617,9 @@ class Faturamento(QObject):
                 employee_company.date = dateFormatted
                 employee_company.examsCost = []
                 exams_exact = nameAndExam[1].split('/')
-
                 hasExam = False
                 for exam in exams_exact:
+                    examWithoutFormat = exam
                     exam = exam.strip()
                     exam_compar = unidecode(exam.lower())
                     for exam_significant in self.dictionary_exams:
@@ -638,7 +638,7 @@ class Faturamento(QObject):
                                 employee_company.cost += company[1]
                                 if (self.hasDetailed):
                                     employee_company.examsCost.append(
-                                        (exam, company[1]))
+                                        (examWithoutFormat, company[1]))
                                 hasExam = True
                     if (not hasExam):
                         if (newCompany.missingExams == ''):

@@ -80,6 +80,10 @@
         "Raio-x de Coluna Dorsal"
     ],
     [
+        "RX DE COLUNA LOMBAR",
+        "Raio-x de Coluna Lombar"
+    ],
+    [
         "AV OFTALMOLOGICA",
         "Avaliação Oftalmológica"
     ],
@@ -94,5 +98,17 @@
     [
         "QUESTIONARIO EPILEPSIA",
         "Questionário de Epilepsia"
+    ],
+    [
+        "CHUMBO URINARIO",
+        "Dosagem de chumbo"
+    ],
+    [
+        "DOSAGEM DE FERRO",
+        "Ferro Sérico"
+    ],
+    [
+        "TOLUENO NA URINA",
+        "Tolueno Urinário"
     ]
 ]

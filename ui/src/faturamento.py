@@ -131,6 +131,7 @@ def getExams(company_name, list_of_company, newCompany):
     ROW_START = 3
     COLUMN_INDEX = [0, 1]
     try:
+
         df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
         # Get row 3 to infinity and Column A and B
         tableOfCompany_Value = df.iloc[ROW_START:, COLUMN_INDEX]
@@ -403,27 +404,30 @@ class Faturamento(QObject):
     def setEmployeesFile(self):
         try:
             # Carregando o arquivo de empresas do excel
+            print('Passei aqui')
+            # print(open("WORKBOOK_PATH_COMPANY", "r"))
             self.workbook_employees: Workbook = load_workbook(
                 WORKBOOK_PATH_FUNC)
         except Exception:
             exception_ = ErrorBilling(
-                f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
+                f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_FUNC} ')
             raise exception_
 
-        name_month = self.monthText.upper()
-        year = str(self.yearText)
-        sheet_name_employees = f'{name_month} {year}'
-        # Carregando o arquivo de exames realizados do excel
-        try:
-            self.worksheet_employees: Worksheet = \
-                self.workbook_employees[sheet_name_employees]
-        except Exception:
-            error = f'Error ao tentar encontrar '\
-                'uma página da planilha chamada ' \
-                f'{sheet_name_employees}'
-            exception_ = ErrorBilling(error)
+        if (self.workbook_employees):
+            name_month = self.monthText.upper()
+            year = str(self.yearText)
+            sheet_name_employees = f'{name_month} {year}'
+            # Carregando o arquivo de exames realizados do excel
+            try:
+                self.worksheet_employees: Worksheet = \
+                    self.workbook_employees[sheet_name_employees]
+            except Exception:
+                error = f'Error ao tentar encontrar '\
+                    'uma página da planilha chamada ' \
+                    f'{sheet_name_employees}'
+                exception_ = ErrorBilling(error)
 
-            raise exception_
+                raise exception_
 
     def getCompaniesNotFound(self): return self.companies_not_found
 
@@ -636,7 +640,8 @@ class Faturamento(QObject):
                                 and not hasExam):
                             if (('externo' not in exam.lower() and
                                     'externo' not in company[0].lower())):
-                                employee_company.cost += company[1]
+                                if (isinstance(company[1], (float, int))):
+                                    employee_company.cost += company[1]
                                 if (self.hasDetailed):
                                     employee_company.examsCost.append(
                                         (examWithoutFormat, company[1]))

@@ -27,6 +27,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     max_row = 0
     text = ''
     p: QProcess
+    inProcess: bool = False
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -54,14 +55,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Billing instance
         self.billing = None  # type: ignore
-
+        
         # Reset a companyExamNotFound
         self.companyExamNotFound = []
 
         # Set button method
         self.buttonSend.clicked.connect(self.startWorkerBilling)
         self.resultView.currentItemChanged.connect(self.printTeste)
-
+         
+    def keyPressEvent(self, event):
+        # Allow the process to start when pressing Enter in the last field.
+        if (event.key() == 16777220 and not self.inProcess):
+            self.inProcess = True
+            self.startWorkerBilling()
+                            
     def messageTerminal(self, s):
         self.resultView.addItems(s)
 
@@ -149,6 +156,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 print('valor de value: ', value)
                 self.messageTerminal([f'\n{value[1]}'])
         print('worker finalizado')
+        self.inProcess = False
 
     @Slot()
     def workerBillingCompaniesNotFound(self, value):

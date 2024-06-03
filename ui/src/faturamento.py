@@ -404,7 +404,6 @@ class Faturamento(QObject):
     def setEmployeesFile(self):
         try:
             # Carregando o arquivo de empresas do excel
-            print('Passei aqui')
             # print(open("WORKBOOK_PATH_COMPANY", "r"))
             self.workbook_employees: Workbook = load_workbook(
                 WORKBOOK_PATH_FUNC)

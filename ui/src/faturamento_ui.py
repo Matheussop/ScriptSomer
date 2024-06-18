@@ -55,20 +55,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Billing instance
         self.billing = None  # type: ignore
-        
+
         # Reset a companyExamNotFound
         self.companyExamNotFound = []
 
         # Set button method
         self.buttonSend.clicked.connect(self.startWorkerBilling)
         self.resultView.currentItemChanged.connect(self.printTeste)
-         
+
     def keyPressEvent(self, event):
         # Allow the process to start when pressing Enter in the last field.
         if (event.key() == 16777220 and not self.inProcess):
             self.inProcess = True
             self.startWorkerBilling()
-                            
+
     def messageTerminal(self, s):
         self.resultView.addItems(s)
 
@@ -105,8 +105,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         worker.started.connect(self.workerBillingStarted)
         worker.progressed.connect(self.workerBillingProgressed)
         worker.finished.connect(self.workerBillingFinished)
-        worker.companiesNotFound.connect(self.workerBillingCompaniesNotFound)
-        worker.rangeProgress.connect(self.setRangeProgressBar)
+        worker.companies_not_found_signal.connect(
+            self.workerBillingCompaniesNotFound)
+        worker.range_progress.connect(self.setRangeProgressBar)
 
         thread.start()
 

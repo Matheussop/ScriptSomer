@@ -1,16 +1,32 @@
 import sys
 import locale
-
+import logging
 from pprint import pprint
-from styles import setupTheme
 from datetime import datetime, date, timedelta
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Slot, QProcess, QThread
+from styles import setupTheme
 from window import Ui_MainWindow
 from faturamento import BillingDataProcessor
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("faturamento.log"),
+                        logging.StreamHandler()
+                    ])
+
 
 def convertToArray(companyList):
+    """
+    Converte a lista de empresas para um array de strings formatadas.
+
+    Args:
+        companyList (list): Lista de empresas com exames não encontrados.
+
+    Returns:
+        list: Lista formatada de empresas e exames faltantes.
+    """
     aux = []
     for company in companyList:
         aux.append(f"\n{company['name']}")
@@ -23,6 +39,9 @@ def convertToArray(companyList):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
+    """
+    Classe principal da interface gráfica.
+    """
     billing: BillingDataProcessor
     max_row = 0
     text = ''
@@ -32,14 +51,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        self.setup_defaults()
+        self.setup_signals()
+        self.billing = None  # type: ignore
+
+    def setup_defaults(self):
+        """
+        Configura os valores padrão dos campos de entrada.
+        """
         # Set default year
         self.yearText.setTextMargins(10, 0, 0, 0)
-        year = str(datetime.now().year)
-        self.yearText.setText(year)
+        self.yearText.setText(str(datetime.now().year))
 
         # Set default month
         locale.setlocale(locale.LC_ALL, 'pt_BR')
-        # Get Last month
         monthText = (date.today().replace(day=1) -
                      timedelta(days=1)).strftime('%B')
         self.monthText.setTextMargins(10, 0, 0, 0)
@@ -50,68 +75,98 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.folderText.setText(folderName)
         self.folderText.setTextMargins(10, 0, 0, 0)
 
-        # Set default sheetDetail
-        # self.checkBoxDetail.setChecked(True)
-
-        # Billing instance
-        self.billing = None  # type: ignore
-
-        # Reset a companyExamNotFound
-        self.companyExamNotFound = []
-
-        # Set button method
+    def setup_signals(self):
+        """
+        Configura os sinais e slots da interface.
+        """
         self.buttonSend.clicked.connect(self.startWorkerBilling)
         self.resultView.currentItemChanged.connect(self.printTeste)
 
     def keyPressEvent(self, event):
-        # Allow the process to start when pressing Enter in the last field.
-        if (event.key() == 16777220 and not self.inProcess):
+        """
+        Permite iniciar o processo pressionando Enter no último campo.
+
+        Args:
+            event (QKeyEvent): Evento de tecla pressionada.
+        """
+        if event.key() == 16777220 and not self.inProcess:  # Enter key
             self.inProcess = True
             self.startWorkerBilling()
 
-    def messageTerminal(self, s):
-        self.resultView.addItems(s)
+    def messageTerminal(self, messages):
+        """
+        Adiciona mensagens ao terminal da interface.
+
+        Args:
+            messages (list): Lista de mensagens para exibir.
+        """
+        if not isinstance(messages, list):
+            logging.error(
+                "A função messageTerminal esperava uma lista de mensagens.")
+            return
+        self.resultView.addItems(messages)
 
     @Slot()
     def startWorkerBilling(self):
+        """
+        Inicia o processo de faturamento em uma nova thread.
+        """
+        if self.inProcess:
+            logging.warning("Processo de faturamento já está em execução.")
+            self.messageTerminal(
+                ["Processo de faturamento já está em execução."])
+            return
 
-        # Create a Billing instance
-        self.billing = BillingDataProcessor()
+        self.inProcess = True
+        self.reset_state()
 
-        # Get a DictionaryExams data from a file
-        self.billing.getDictionaryExams()
+        try:
+            self.billing = BillingDataProcessor()
+            self.billing.getDictionaryExams()
+            self._thread = QThread()
 
-        self._thread = QThread()
-        isDetail = mainWindow.checkBoxDetail.isChecked()
+            isDetail = self.checkBoxDetail.isChecked()
+            self.billing.setParamsBilling(
+                self.yearText.text(), self.monthText.text(),
+                self.folderText.text(), isDetail)
 
-        self.billing.setParamsBilling(
-            self.yearText.text(), self.monthText.text(),
-            self.folderText.text(), isDetail)
+            worker = self.billing
+            thread = self._thread
 
-        worker = self.billing
-        thread = self._thread
+            worker.moveToThread(thread)
+            thread.started.connect(worker.process_billing)
+            worker.finished.connect(thread.quit)
+            thread.finished.connect(thread.deleteLater)
+            worker.finished.connect(worker.deleteLater)
 
-        # Mover o worker para a thread
-        worker.moveToThread(thread)
+            worker.started.connect(self.workerBillingStarted)
+            worker.progressed.connect(self.workerBillingProgressed)
+            worker.finished.connect(self.workerBillingFinished)
+            worker.companies_not_found_signal.connect(
+                self.workerBillingCompaniesNotFound)
+            worker.range_progress.connect(self.setRangeProgressBar)
 
-        # Adicionar a thread ao processo (Run)
-        thread.started.connect(worker.process_billing)
+            thread.start()
+        except Exception as e:
+            logging.error(f"Erro ao iniciar o faturamento: {e}")
+            self.messageTerminal([f"Erro ao iniciar o faturamento: {e}"])
+            self.inProcess = False
 
-        worker.finished.connect(thread.quit)
-
-        thread.finished.connect(thread.deleteLater)
-        worker.finished.connect(worker.deleteLater)
-
-        worker.started.connect(self.workerBillingStarted)
-        worker.progressed.connect(self.workerBillingProgressed)
-        worker.finished.connect(self.workerBillingFinished)
-        worker.companies_not_found_signal.connect(
-            self.workerBillingCompaniesNotFound)
-        worker.range_progress.connect(self.setRangeProgressBar)
-
-        thread.start()
+    def reset_state(self):
+        """
+        Reseta o estado do processo de faturamento.
+        """
+        self.progressBar.setValue(0)
+        self.resultView.clear()
+        self.inProcess = False
 
     def handle_state(self, state):
+        """
+        Lida com as mudanças de estado do processo.
+
+        Args:
+            state (QProcess.ProcessState): Estado do processo.
+        """
         states = {
             QProcess.NotRunning: 'Processo Finalizado',  # type: ignore
             QProcess.Starting: 'Iniciando Processo',  # type: ignore
@@ -122,46 +177,88 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot()
     def printTeste(self, teste):
+        """
+        Imprime o item selecionado no terminal.
+
+        Args:
+            teste (QListWidgetItem): Item selecionado.
+        """
         objectPrint = f'{teste.text()}'
         pprint(objectPrint)
 
     def saveExams(self):
+        """
+        Salva os exames no dicionário quando a aplicação é fechada.
+        """
         if self.billing:
             self.billing.saveDictionaryExams()
 
     @Slot()
     def workerBillingStarted(self, value):
-        self.buttonSend.setDisabled(True)
-        self.messageTerminal([value])
-        print('worker iniciado')
+        """
+        Slot chamado quando o processo de faturamento é iniciado.
+
+        Args:
+            value (str): Mensagem de início.
+        """
+        if value:
+            self.buttonSend.setDisabled(True)
+            self.messageTerminal([value])
+        logging.info('Processo de faturamento iniciado.')
 
     @Slot()
     def workerBillingProgressed(self, value):
+        """
+        Slot chamado para atualizar a barra de progresso.
+
+        Args:
+            value (int): Valor do progresso.
+        """
         self.progressBar.setValue(value)
-        # print('em progresso')
+        logging.info(f'Progresso: {value}')
 
     @Slot()
     def setRangeProgressBar(self, value):
+        """
+        Slot chamado para definir o intervalo da barra de progresso.
+
+        Args:
+            value (int): Valor máximo do progresso.
+        """
         self.progressBar.setRange(0, value)
 
     @Slot()
     def workerBillingFinished(self, value):
+        """
+        Slot chamado quando o processo de faturamento é finalizado.
+
+        Args:
+            value (list): Resultado do processo.
+        """
         self.buttonSend.setDisabled(False)
-        if value != []:
+        if value:
             if 'Error: ' != value[0]:
                 results = convertToArray(value)
-                self.messageTerminal(['\nEmpresas com exames não encontrados'])
-                self.messageTerminal(results)
+                if results:
+                    self.messageTerminal(
+                        ['\nEmpresas com exames não encontrados'])
+                    self.messageTerminal(results)
                 self.messageTerminal(['\nPrograma finalizado'])
             else:
-                print('valor de value: ', value)
+                logging.error(f'Erro no processo de faturamento: {value}')
                 self.messageTerminal([f'\n{value[1]}'])
-        print('worker finalizado')
+        logging.info('Processo de faturamento finalizado.')
         self.inProcess = False
 
     @Slot()
     def workerBillingCompaniesNotFound(self, value):
-        if value != []:
+        """
+        Slot chamado quando empresas não são encontradas.
+
+        Args:
+            value (list): Lista de empresas não encontradas.
+        """
+        if value:
             self.messageTerminal(value)
 
 
@@ -173,5 +270,5 @@ if __name__ == '__main__':
     mainWindow.show()
 
     app.exec()
-    # When exit app, save dictionary exams
+    # When exiting the app, save dictionary exams
     sys.exit(mainWindow.saveExams())

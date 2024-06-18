@@ -417,6 +417,19 @@ class BillingDataProcessor(QObject):
         self.dictionary_exams = dictionary_exams
         self.names_of_companies = names_of_companies
 
+    def reset(self):
+        """
+        Reseta o estado do processo de faturamento.
+        """
+        self.maxEmployees = 0
+        self.worksheet_employees = None  # type: ignore
+        self.workbook_employees = None  # type: ignore
+        self.names_of_companies = []
+        self.companies_not_found = []
+        self.companyList = []
+        self.companyList_Billing = []
+        self.progress = 0
+
     def setParamsBilling(self, yearText, monthText, folder,
                          is_detail) -> None:
         self.yearText = yearText
@@ -432,9 +445,11 @@ class BillingDataProcessor(QObject):
             # Carregando o arquivo de empresas do excel
             self.workbook_employees: Workbook = load_workbook(
                 WORKBOOK_PATH_FUNC)
-        except Exception:
+            logging.info('Arquivo de exames carregado com sucesso.')
+        except Exception as e:
             exception_ = ErrorBilling(
                 f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_FUNC} ')
+            logging.error(f'Erro ao carregar o arquivo de exames: {e}')
             raise exception_
 
         if self.workbook_employees:
@@ -835,6 +850,7 @@ class BillingDataProcessor(QObject):
             indicar o início e o fim do processo.
         """
         try:
+            self.reset()  # Resetando o estado antes de iniciar o processamento
             self.started.emit('Processo iniciado...')
             self.progress = 0
             # Carregando dados do arquivo de exames realizados
@@ -845,7 +861,6 @@ class BillingDataProcessor(QObject):
 
             # Configurando a barra de progresso
             initial_max_employees = self.maxEmployees
-            self.test_X_Companys(2)
             self.maxEmployees += len(self.companyList_Billing) - \
                 len(self.companies_not_found)
             self.range_progress.emit(self.maxEmployees)
@@ -867,8 +882,11 @@ class BillingDataProcessor(QObject):
             companies_list = self.build_companies_list(companies)
 
             self.finished.emit(companies_list)
-            self.companies_not_found_signal.emit(self.companies_not_found)
-
+            if len(self.companies_not_found) > 1:
+                self.companies_not_found_signal.emit(self.companies_not_found)
+            else:
+                self.companies_not_found_signal.emit(
+                    ['\nTodas as empresa foram geradas'])
             self.progress += initial_max_employees
             self.progressed.emit(self.progress)
 

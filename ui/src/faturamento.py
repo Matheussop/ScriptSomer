@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, Signal
 from argparse import ArgumentParser
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from typing import List
+from typing import List, Tuple
 from datetime import datetime
 from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment, Border
 from openpyxl.styles import Side
@@ -20,12 +20,17 @@ dictionary_company_names = [
     ("Minas Brasil", "BRASIL COMERCIAL"),
     ("ACTur", "AC TRANSPORTES"),
 ]
+is_detail = False
 
 
 def resource_path(relative_path):
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(
         os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
+
+
+WORKBOOK_PATH_COMPANY = resource_path('./files/ValoresEmpresas.xlsx')
+WORKBOOK_PATH_FUNC = resource_path('./files/examesRealizados.xlsx')
 
 
 class ErrorBilling(Exception):
@@ -38,19 +43,19 @@ class Employee:
     exams: str
     function: str
     date: str
-    examsCost: List
-    typeExam: str
+    exams_cost: List
+    exam_type: str
 
-    def __init__(self, examsCost: List = [], name: str = '', cost: float = 0.0,
-                 function: str = '', exams: str = '', date: str = '',
-                 typeExam: str = '',):
+    def __init__(self, exams_cost: List = [], name: str = '',
+                 cost: float = 0.0, function: str = '',
+                 exams: str = '', date: str = '', exam_type: str = '',):
         self.name = name
         self.cost = cost
         self.function = function
         self.exams = exams
         self.date = date
-        self.typeExam = typeExam
-        self.examsCost = examsCost
+        self.exam_type = exam_type
+        self.exams_cost = exams_cost
 
 
 class Company:
@@ -85,16 +90,16 @@ class EmployeesBilling:
     function: str
     data: datetime
     exams: str
-    typeExam: str
+    exam_type: str
 
     def __init__(self, name: str = '', function: str = '',
                  exams: str = '',
-                 data: datetime = datetime.now(), typeExam: str = ''):
+                 data: datetime = datetime.now(), exam_type: str = ''):
         self.name = name
         self.function = function
         self.exams = exams
         self.data = data
-        self.typeExam = typeExam
+        self.exam_type = exam_type
 
 
 class CompanyBilling:
@@ -108,29 +113,24 @@ class CompanyBilling:
 
 class Billing:
     dataExam: str
-    nameCompany: str
-    nameEmployees: str
-    functionEmployees: str
+    company_name: str
+    employee_name: str
+    employee_function: str
     exams: str
-    typeExam: str
+    exam_type: str
 
-    def __init__(self, dataExam: str = '', nameCompany: str = '',
-                 nameEmployees: str = '', functionEmployees: str = '',
-                 exams: str = '', typeExam: str = ''):
-        self.nameCompany = nameCompany
-        self.nameEmployees = nameEmployees
-        self.functionEmployees = functionEmployees
+    def __init__(self, dataExam: str = '', company_name: str = '',
+                 employee_name: str = '', employee_function: str = '',
+                 exams: str = '', exam_type: str = ''):
+        self.company_name = company_name
+        self.employee_name = employee_name
+        self.employee_function = employee_function
         self.exams = exams
         self.dataExam = dataExam
-        self.typeExam = typeExam
+        self.exam_type = exam_type
 
 
-WORKBOOK_PATH_COMPANY = resource_path('./files/ValoresEmpresas.xlsx')
-WORKBOOK_PATH_FUNC = resource_path('./files/examesRealizados.xlsx')
-hasDetailed = False
-
-
-def getExams(company_name, list_of_company, newCompany):
+def getExams(company_name, list_of_company_exams, newCompany):
     ROW_START = 3
     COLUMN_INDEX = [0, 1]
     try:
@@ -148,7 +148,7 @@ def getExams(company_name, list_of_company, newCompany):
                     newCompany.exams = newCompany.exams + ", " + str(exam[0])
                 else:
                     newCompany.exams = str(exam[0])
-        list_of_company.extend(exams)
+        list_of_company_exams.extend(exams)
     except FileNotFoundError:
         exception_ = ErrorBilling(
             f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_COMPANY}')
@@ -190,34 +190,34 @@ def styleXlsx(wb):
     wb.add_named_style(style_Cost)
 
 
-def setContentDataFrame(arrayUnformattedData: List[Employee]) -> List:
+def setContentDataFrame(array_unformatted_data: List[Employee]) -> List:
     data = []
-    for employeesItem in arrayUnformattedData:
-        aux = [employeesItem.date,
-               employeesItem.name,
-               employeesItem.function,
-               employeesItem.exams,
-               employeesItem.typeExam,
-               employeesItem.cost]
+    for employees_item in array_unformatted_data:
+        aux = [employees_item.date,
+               employees_item.name,
+               employees_item.function,
+               employees_item.exams,
+               employees_item.exam_type,
+               employees_item.cost]
         data.append(aux)
     return data
 
 
-def setContentDetailDataFrame(arrayUnformattedData: List[Employee]) -> List:
+def setContentDetailDataFrame(array_unformatted_data: List[Employee]) -> List:
     data = []
-    for employeesItem in arrayUnformattedData:
-        listOfExams = []
-        listOfCost = []
-        for examCost in employeesItem.examsCost:
-            listOfExams.append(examCost[0])  # name exam
-            listOfCost.append(examCost[1])  # value exam
+    for employees_item in array_unformatted_data:
+        list_of_exams = []
+        list_of_cost = []
+        for exam_cost in employees_item.exams_cost:
+            list_of_exams.append(exam_cost[0])  # Nome do exame
+            list_of_cost.append(exam_cost[1])   # Valor do exame
 
-        aux = [employeesItem.date,
-               employeesItem.name,
-               employeesItem.function,
-               listOfExams,
-               employeesItem.typeExam,
-               listOfCost]
+        aux = [employees_item.date,
+               employees_item.name,
+               employees_item.function,
+               list_of_exams,
+               employees_item.exam_type,
+               list_of_cost]
         data.append(aux)
     return data
 
@@ -301,26 +301,26 @@ def setTotalCostRow(ws):
 def addDetailDataFrame(ws, item):
     row_count = ws.max_row
     # Tamanho da lista de exames feitos pelo funcionário
-    lenOfExams = len(item[3])
+    len_of_exams = len(item[3])
     exams = item[3]
-    examsCost = item[5]
+    exams_cost = item[5]
     # Caso não tenha nenhum exame limpa o campo.
     if (exams == []):
         exams.append("-")
-        examsCost.append("-")
+        exams_cost.append("-")
 
-    firstRow = [item[0], item[1], item[2], exams[0], item[4], examsCost[0]]
-    ws.append(firstRow)
-    for i in range(1, lenOfExams):
+    first_row = [item[0], item[1], item[2], exams[0], item[4], exams_cost[0]]
+    ws.append(first_row)
+    for i in range(1, len_of_exams):
         # Espaços em branco pois será onde a célula sofrera um merge
-        ws.append(['', '', '',  exams[i], '', examsCost[i]])
+        ws.append(['', '', '',  exams[i], '', exams_cost[i]])
 
-    columnsMerge = ['A', 'B', 'C', 'E']
+    columns_merge = ['A', 'B', 'C', 'E']
     # merge_cells A, B, C, E
     if (len(exams) >= 2):
-        for letter in columnsMerge:
+        for letter in columns_merge:
             ws.merge_cells(
-                f'{letter}{row_count+1}:{letter}{row_count+lenOfExams}')
+                f'{letter}{row_count+1}:{letter}{row_count+len_of_exams}')
 
 
 def showMissingExams(ws, missingExams):
@@ -344,16 +344,16 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
-class Faturamento(QObject):
+class BillingDataProcessor(QObject):
     yearText = ''
     monthText = ''
-    folderText = ''
-    hasDetailed = False
+    folder = ''
+    is_detail = False
     dictionary_exams = []
     maxEmployees = 0
     worksheet_employees: Worksheet
     workbook_employees: Workbook
-    names_of_companies = List[tuple]
+    names_of_companies = []
     companies_not_found = []
     companyList = []
     companyList_Billing = []
@@ -365,29 +365,31 @@ class Faturamento(QObject):
     progress = 0
 
     def __init__(self, yearText='', monthText='',
-                 folderText='', hasDetailed=False,
+                 folder='', is_detail=False,
                  dictionary_exams=[],
-                 names_of_companies: List[tuple] = [],
+                 names_of_companies=[],
                  parent=None) -> None:
         super().__init__(parent)
         self.yearText = yearText
         self.monthText = monthText
-        self.folderText = folderText
-        self.hasDetailed = hasDetailed
+        self.folder = folder
+        self.is_detail = is_detail
         self.dictionary_exams = dictionary_exams
         self.names_of_companies = names_of_companies
 
-    def setParamsBilling(self, yearText, monthText, folderText,
-                         hasDetailed) -> None:
+    def setParamsBilling(self, yearText, monthText, folder,
+                         is_detail) -> None:
         self.yearText = yearText
         self.monthText = monthText
-        self.folderText = folderText
-        self.hasDetailed = hasDetailed
+        self.folder = folder
+        self.is_detail = is_detail
 
-    def setEmployeesFile(self):
+    def load_exam_data(self):
+        """
+        Carrega os valores dos exames a partir do arquivo .xlsx.
+        """
         try:
             # Carregando o arquivo de empresas do excel
-            # print(open("WORKBOOK_PATH_COMPANY", "r"))
             self.workbook_employees: Workbook = load_workbook(
                 WORKBOOK_PATH_FUNC)
         except Exception:
@@ -395,10 +397,11 @@ class Faturamento(QObject):
                 f'Error ao tentar acessar o arquivo: {WORKBOOK_PATH_FUNC} ')
             raise exception_
 
-        if (self.workbook_employees):
+        if self.workbook_employees:
             name_month = self.monthText.upper()
             year = str(self.yearText)
             sheet_name_employees = f'{name_month} {year}'
+
             # Carregando o arquivo de exames realizados do excel
             try:
                 self.worksheet_employees: Worksheet = \
@@ -415,7 +418,8 @@ class Faturamento(QObject):
 
     def extract_billing_list(self):
         billing_list = []
-        for billing_row in self.worksheet_employees.iter_rows(min_row=2, values_only=True):
+        for billing_row in self.worksheet_employees.\
+                iter_rows(min_row=2, values_only=True):
             if billing_row[0] is not None:
                 billing_list.append(Billing(
                     str(billing_row[0]),  # Data exame
@@ -428,6 +432,13 @@ class Faturamento(QObject):
         return billing_list
 
     def get_name_company_in_sheet(self) -> List[tuple]:
+        """
+        Retorna uma lista de tuplas contendo os nomes das empresas
+        no workbook e seus respectivos nomes de sheet.
+
+        Returns:
+            List[Tuple[str, str]]: Lista de tuplas (nome_empresa, nome_sheet)
+        """
         try:
             workbook_company: Workbook = load_workbook(WORKBOOK_PATH_COMPANY)
         except Exception:
@@ -436,15 +447,19 @@ class Faturamento(QObject):
             raise exception_
         # Percorrer o sheet e pegar o nome da empresa dentro da tabela
         names_of_workbook = workbook_company.sheetnames
-        names_of_companies: List[tuple] = []
-        for names in names_of_workbook:
-            ws: Worksheet = workbook_company[f'{names}']
-            names_of_companies.append((ws['B1'].value, names))
+        company_names_list: List[Tuple[str, str]] = []
 
-        for nameCompany in dictionary_company_names:
-            names_of_companies.append((nameCompany[1], nameCompany[0]))
+        for sheet_name in names_of_workbook:
+            ws: Worksheet = workbook_company[f'{sheet_name}']
+            company_name = ws['B1'].value
+            if company_name:
+                company_names_list.append((company_name, sheet_name))
 
-        return names_of_companies
+        # Adiciona empresas do dicionário ao resultado
+        for company_name in dictionary_company_names:
+            company_names_list.append((company_name[1], company_name[0]))
+
+        return company_names_list
 
     def update_progress_bar(self):
         self.max_employees = len(self.company_list_billing)
@@ -459,8 +474,8 @@ class Faturamento(QObject):
 
         self.companyList_Billing = companyList_BillingTeste
 
-        self.companyList_Billing = [
-            self.companyList_Billing[2], self.companyList_Billing[3]]
+        # self.companyList_Billing = [
+        #     self.companyList_Billing[2], self.companyList_Billing[3]]
 
     async def generate_base_data_company(self):
         billing_list = self.extract_billing_list()
@@ -492,28 +507,25 @@ class Faturamento(QObject):
         self.dictionary_exams = newDictionary
         return newDictionary
 
-    async def createSheet(self, company, monthText, monthNumber):
+    async def create_sheet(self, company, monthText, monthNumber):
         wb: Workbook = Workbook()
         styleXlsx(wb)
         wb.remove(wb['Sheet'])
-        dataCompany = []
+        data_company = []
 
-        if (self.hasDetailed):
-            dataCompany = setContentDetailDataFrame(company.employees)
+        if (self.is_detail):
+            data_company = setContentDetailDataFrame(company.employees)
         else:
-            dataCompany = setContentDataFrame(company.employees)
+            data_company = setContentDataFrame(company.employees)
 
         ws: Worksheet = wb.create_sheet(company.name[:15])
 
         mountStyleHeaderTable(self.yearText, monthNumber, ws, company.name)
+        for item in data_company:
 
-        # cost = 0
-        # cost = calculateCost(company)
-        # print(cost)
-        for item in dataCompany:
             self.progress += 1
             self.progressed.emit(self.progress)
-            if (self.hasDetailed):
+            if (self.is_detail):
                 addDetailDataFrame(ws, item)
             else:
                 # Caso eu não tenha exames encontrados
@@ -528,9 +540,9 @@ class Faturamento(QObject):
         setTotalCostRow(ws)
         resizeTable(ws)
 
-        nameFile = f'{company.name} - {monthNumber} {monthText}'
-        folderAndName = f'{self.folderText}/Faturamento - {nameFile}'
-        wb.save(f'{folderAndName} {self.yearText}.xlsx')
+        name_file = f'{company.name} - {monthNumber} {monthText}'
+        folder_and_name = f'{self.folder}/Faturamento - {name_file}'
+        wb.save(f'{folder_and_name} {self.yearText}.xlsx')
 
     def check_companies(self, billing_row):
         # if (i > 50):
@@ -543,37 +555,37 @@ class Faturamento(QObject):
             newCompanyBilling = CompanyBilling()
             newCompanyBilling.employeesBilling = []
             employeesBillingAux = EmployeesBilling()
-            if (billing_row.nameCompany == company.name):
+            if (billing_row.company_name == company.name):
                 employeesBillingAux = EmployeesBilling(
-                    billing_row.nameEmployees,
-                    billing_row.functionEmployees,
+                    billing_row.employee_name,
+                    billing_row.employee_function,
                     billing_row.exams,
                     data=billing_row.dataExam,
-                    typeExam=billing_row.typeExam)
+                    exam_type=billing_row.exam_type)
                 company.employeesBilling.append(employeesBillingAux)
 
                 noHasCompany = False
         if (noHasCompany):
             employeesBillingAux = EmployeesBilling(
-                name=billing_row.nameEmployees,
-                function=billing_row.functionEmployees,
+                name=billing_row.employee_name,
+                function=billing_row.employee_function,
                 exams=billing_row.exams,
                 data=billing_row.dataExam,
-                typeExam=billing_row.typeExam)
+                exam_type=billing_row.exam_type)
             newCompanyBilling = CompanyBilling(
-                name=billing_row.nameCompany,
+                name=billing_row.company_name,
                 employeesBilling=[employeesBillingAux])
             self.companyList_Billing.append(newCompanyBilling)
         if (len(self.companyList_Billing) == 0):
             newCompanyBilling = CompanyBilling()
             employeesBillingAux = EmployeesBilling(
-                name=billing_row.nameEmployees,
-                function=billing_row.functionEmployees,
+                name=billing_row.employee_name,
+                function=billing_row.employee_function,
                 exams=billing_row.exams,
                 data=billing_row.dataExam,
-                typeExam=billing_row.typeExam)
+                exam_type=billing_row.exam_type)
             newCompanyBilling = CompanyBilling(
-                name=billing_row.nameCompany,
+                name=billing_row.company_name,
                 employeesBilling=[employeesBillingAux])
             self.companyList_Billing.append(newCompanyBilling)
 
@@ -594,9 +606,6 @@ class Faturamento(QObject):
                 'eireli', '')
             realNameOfCompany = realNameOfCompany.replace('ltda', '')
             realNameOfCompany = realNameOfCompany.replace('eireli', '')
-    # print('Empresa que tenho o sheet', realNameOfCompany,
-    #       '  | Empresa que ta na tabela de exames:', \
-        # company_name_billing)
 
             if ((realNameOfCompany in company_name_billing)
                     or (nameOfPageSheetCompany in company_name_billing)):
@@ -606,24 +615,23 @@ class Faturamento(QObject):
         if (not hasName):
             self.companies_not_found.append('\n' + company_Billing.name)
         else:
-            list_of_company = []
-            getExams(company_name, list_of_company, newCompany)
+            list_of_company_exams = []
+            getExams(company_name, list_of_company_exams, newCompany)
             namesAndExams = []
-
             for employees in company_Billing.employeesBilling:
                 namesAndExams.append(
                     (employees.name, employees.exams, employees.function,
-                        employees.exams, employees.data, employees.typeExam))
+                     employees.data, employees.exam_type))
 
             for nameAndExam in namesAndExams:
-                dateFormatted = setDateXlsxToString(nameAndExam[4])
+                dateFormatted = setDateXlsxToString(nameAndExam[3])
                 employee_company = Employee()
                 employee_company.name = nameAndExam[0]
                 employee_company.function = nameAndExam[2]
-                employee_company.exams = nameAndExam[3]
-                employee_company.typeExam = nameAndExam[5]
+                employee_company.exams = nameAndExam[1]
+                employee_company.exam_type = nameAndExam[4]
                 employee_company.date = dateFormatted
-                employee_company.examsCost = []
+                employee_company.exams_cost = []
                 exams_exact = nameAndExam[1].split('/')
                 hasExam = False
                 for exam in exams_exact:
@@ -635,9 +643,8 @@ class Faturamento(QObject):
                             exam_significant[0].lower())
                         if (exam_compar == examDictionary):
                             exam = exam_significant[1]
-
                     hasExam = False
-                    for company in list_of_company:
+                    for company in list_of_company_exams:
                         if (unidecode(exam.lower())
                                 in unidecode(company[0].lower())
                                 and not hasExam):
@@ -645,8 +652,8 @@ class Faturamento(QObject):
                                     'externo' not in company[0].lower())):
                                 if (isinstance(company[1], (float, int))):
                                     employee_company.cost += company[1]
-                                if (self.hasDetailed):
-                                    employee_company.examsCost.append(
+                                if (self.is_detail):
+                                    employee_company.exams_cost.append(
                                         (examWithoutFormat, company[1]))
                                 hasExam = True
                     if (not hasExam):
@@ -659,12 +666,117 @@ class Faturamento(QObject):
                                 newCompany.missingExams \
                                 + ", " + exam
                 newCompany.employees.append(employee_company)
+
             companyListAux.append(newCompany)
         return companyListAux
 
     # ----------------------------------------------------------------
 
-    async def getAllExams(self, companyList):
+    def get_company_list(self, company_Billing) -> List[Company]:
+        companyListAux = []
+        newCompany = Company(company_Billing.name)
+        newCompany.employees = []
+        company_name_billing = self._normalize_name(company_Billing.name)
+        hasName, company_name = self._find_company_name(company_name_billing)
+
+        if not hasName:
+            self.companies_not_found.append('\n' + company_Billing.name)
+        else:
+            list_of_company_exams = []
+            getExams(company_name, list_of_company_exams, newCompany)
+
+            namesAndExams = self._get_names_and_exams(company_Billing)
+
+            for nameAndExam in namesAndExams:
+                employee_company = self._create_employee(nameAndExam)
+                exams_exact = nameAndExam[1].split('/')
+                self._process_exams(
+                    exams_exact, list_of_company_exams,
+                    employee_company, newCompany)
+                newCompany.employees.append(employee_company)
+            companyListAux.append(newCompany)
+        return companyListAux
+
+    def _normalize_name(self, name):
+        return unidecode(name.lower()) \
+            .replace('ltda', '').replace('eireli', '')
+
+    def _find_company_name(self, company_name_billing):
+        for names in self.names_of_companies:
+            realNameOfCompany = self._normalize_name(names[0])
+            nameOfPageSheetCompany = self._normalize_name(names[1])
+
+            if realNameOfCompany in company_name_billing or \
+                    nameOfPageSheetCompany in company_name_billing:
+                return True, names[1]
+        return False, ''
+
+    def _get_names_and_exams(self, company_Billing):
+        namesAndExams = []
+        for employees in company_Billing.employeesBilling:
+            namesAndExams.append(
+                (employees.name, employees.exams, employees.function,
+                 employees.data, employees.exam_type))
+        return namesAndExams
+
+    def _create_employee(self, nameAndExam):
+        employee_company = Employee()
+        employee_company.name = nameAndExam[0]
+        employee_company.function = nameAndExam[2]
+        employee_company.exams = nameAndExam[1]
+        employee_company.exam_type = nameAndExam[4]
+        employee_company.date = setDateXlsxToString(nameAndExam[3])
+        employee_company.exams_cost = []
+        employee_company.cost = 0.0
+        return employee_company
+
+    def _process_exams(self, exams_exact, list_of_company,
+                       employee_company, newCompany):
+        for exam in exams_exact:
+            examWithoutFormat = exam
+            exam = self._normalize_name(exam.strip())
+            exam = self._map_exam_to_dictionary(exam)
+            hasExam = False
+            for name_exam in list_of_company:
+                if self._is_exam_in_company(exam, name_exam) and not hasExam:
+                    if self._update_employee_costs(
+                            name_exam, employee_company, examWithoutFormat):
+                        hasExam = True
+
+            if not hasExam:
+                self._update_missing_exams(newCompany, exam)
+
+    def _map_exam_to_dictionary(self, exam):
+        for exam_significant in self.dictionary_exams:
+            if unidecode(exam_significant[0].lower()) == exam:
+                return exam_significant[1]
+        return exam
+
+    def _is_exam_in_company(self, exam, company):
+        return unidecode(exam.lower()) in unidecode(company[0].lower())
+
+    def _update_employee_costs(self, company, employee_company,
+                               examWithoutFormat):
+        if 'externo' not in examWithoutFormat.lower() and \
+                'externo' not in company[0].lower():
+
+            if self.is_detail:
+                employee_company.exams_cost.append(
+                    (examWithoutFormat, company[1]))
+            if isinstance(company[1], (float, int)):
+                employee_company.cost += company[1]
+                return True
+        return False
+
+    def _update_missing_exams(self, newCompany, exam):
+        if not newCompany.missingExams:
+            newCompany.missingExams = exam
+        elif exam not in newCompany.missingExams:
+            newCompany.missingExams += ", " + exam
+
+    # ----------------------------------------------------------------
+
+    async def get_all_exams(self, companyList):
         locale.setlocale(locale.LC_ALL, 'pt_BR')
         monthText: str = self.monthText
         monthNumber = datetime.strptime(monthText, '%B').month
@@ -674,74 +786,89 @@ class Faturamento(QObject):
                 # Progress Bar
                 self.maxEmployees += len(company[0].employees)
                 self.range_progress.emit(self.maxEmployees)
-
-                await self.createSheet(company[0], monthText.upper(),
-                                       monthNumber)
+                await self.create_sheet(company[0], monthText.upper(),
+                                        monthNumber)
                 self.progress += 1
                 self.progressed.emit(self.progress)
 
-    async def generateFiles(self):
+    def build_companies_list(self, companies):
+        """
+        Constrói a lista de empresas com os resultados do faturamento.
+        """
+        companies_list = []
+        for company in companies:
+            if company:
+                companies_list.append({
+                    'name': company[0].name,
+                    'missingExams': company[0].missingExams,
+                })
+        return companies_list
+
+    async def generate_files(self):
         companyListAux = []
         for i, companyBilling in enumerate(self.companyList_Billing):
-            companyListAux.append(self.getCompanyList(companyBilling))
+            companyListAux.append(self.get_company_list(companyBilling))
             self.progress += 1
             self.progressed.emit(self.progress)
         return companyListAux
 
-    def callGeneratedFiles(self):
+    def create_output_folder(self):
+        """
+        Cria a pasta de saída para os arquivos de faturamento.
+        """
+        try:
+            os.mkdir(self.folder)
+        except FileExistsError:
+            pass
+        except Exception as e:
+            raise ErrorBilling(f'Erro ao criar pasta {self.folder}: {str(e)}')
+
+    def process_billing(self):
+        """
+        Processa todo o faturamento.
+        """
         try:
             self.started.emit('Processo iniciado...')
             self.progress = 0
             # Carregando dados do arquivo de exames realizados
-            self.setEmployeesFile()
+            self.load_exam_data()
+
+            # Gerando dados base da empresa
             asyncio.run(self.generate_base_data_company())
 
-            # Definindo limite máximo da barra de progresso
-            maxEmployeesAux = self.maxEmployees
+            # Configurando a barra de progresso
+            initial_max_employees = self.maxEmployees
+            self.test_X_Companys(2)
             self.maxEmployees += len(self.companyList_Billing) - \
                 len(self.companies_not_found)
-
-            # Progress Bar
             self.range_progress.emit(self.maxEmployees)
-            companies = asyncio.run(self.generateFiles())
 
-            self.progress += maxEmployeesAux
+            # Gerando arquivos de faturamento
+            companies = asyncio.run(self.generate_files())
+            self.progress += initial_max_employees
             self.progressed.emit(self.progress)
 
             # Criando pasta que terá os arquivos de faturamentos
-            if len(companies) > 0:
-                try:
-                    os.mkdir(f'{self.folderText}')
-                except FileExistsError:
-                    ...
-                except Exception:
-                    exception_ = ErrorBilling(
-                        f'Error ao criar pasta {self.folderText}\n')
-                    raise exception_
+            self.create_output_folder()
 
-            # Progress Bar
+            # Atualizando a barra de progresso
             self.maxEmployees += len(companies) - len(self.companies_not_found)
             self.range_progress.emit(self.maxEmployees)
 
             # Criando os arquivos de faturamentos e populando.
-            asyncio.run(self.getAllExams(companies))
-            companiesList = []
-            for company in companies:
-                if company != []:
-                    companiesList.append({
-                        'name': company[0].name,
-                        'missingExams': company[0].missingExams,
-                    })
+            asyncio.run(self.get_all_exams(companies))
+            companies_list = self.build_companies_list(companies)
 
-            # print(companiesList)
-            self.finished.emit(companiesList)
+            self.finished.emit(companies_list)
             self.companies_not_found_signal.emit(self.companies_not_found)
 
-            self.progress += maxEmployeesAux
+            self.progress += initial_max_employees
             self.progressed.emit(self.progress)
-        except ErrorBilling as errorBilling:
-            exception_ = 'Ocorreu um error durante a geração'
-            self.finished.emit(['Error: ', errorBilling])
+
+        except ErrorBilling as error_billing:
+            exception_ = ErrorBilling('Ocorreu um error durante a geração')
+            self.finished.emit(['Error: ', str(error_billing)])
+            raise exception_
 
 
 # Parâmetros necessários para executar o script independentemente.
@@ -764,11 +891,11 @@ args = parser.parse_args()
 
 if __name__ == '__main__':
     if (len(sys.argv) > 1):
-        billing = Faturamento()
+        processor = BillingDataProcessor()
         isDetail = False
         if (args.detail == 'True'):
             isDetail = True
-        billing.setParamsBilling(args.year, args.month,
-                                 args.folder, isDetail)
+        processor.setParamsBilling(args.year, args.month,
+                                   args.folder, isDetail)
 
-        billing.callGeneratedFiles()
+        processor.process_billing()

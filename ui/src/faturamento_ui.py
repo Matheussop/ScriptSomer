@@ -7,7 +7,7 @@ from datetime import datetime, date, timedelta
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Slot, QProcess, QThread
 from window import Ui_MainWindow
-from faturamento import Faturamento
+from faturamento import BillingDataProcessor
 
 
 def convertToArray(companyList):
@@ -23,7 +23,7 @@ def convertToArray(companyList):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    billing: Faturamento
+    billing: BillingDataProcessor
     max_row = 0
     text = ''
     p: QProcess
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.monthText.setText(monthText)
 
         # Set default folder
-        folderName = 'Faturamento'
+        folderName = 'Faturamento_Teste'
         self.folderText.setText(folderName)
         self.folderText.setTextMargins(10, 0, 0, 0)
 
@@ -76,7 +76,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def startWorkerBilling(self):
 
         # Create a Billing instance
-        self.billing = Faturamento()
+        self.billing = BillingDataProcessor()
 
         # Get a DictionaryExams data from a file
         self.billing.getDictionaryExams()
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         worker.moveToThread(thread)
 
         # Adicionar a thread ao processo (Run)
-        thread.started.connect(worker.callGeneratedFiles)
+        thread.started.connect(worker.process_billing)
 
         worker.finished.connect(thread.quit)
 

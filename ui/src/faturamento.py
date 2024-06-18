@@ -138,7 +138,8 @@ def getExams(company_name, list_of_company_exams, newCompany):
     Args:
         company_name (str): Nome da empresa.
         list_of_company_exams (list): Lista para armazenar os exames.
-        newCompany (Company): Objeto Company para armazenar os dados da empresa.
+        newCompany (Company): Objeto Company para armazenar os dados da
+        empresa.
 
     Raises:
         ErrorBilling: Se ocorrer um erro ao acessar o arquivo.
@@ -362,7 +363,8 @@ logging.basicConfig(level=logging.INFO,
 
 class BillingDataProcessor(QObject):
     """
-    Classe responsável por processar o faturamento dos exames médicos realizados por empresas.
+    Classe responsável por processar o faturamento dos exames médicos
+    realizados por empresas.
 
     Atributos:
         yearText (str): Ano do faturamento.
@@ -371,7 +373,8 @@ class BillingDataProcessor(QObject):
         is_detail (bool): Indica se os arquivos devem ser detalhados.
         dictionary_exams (list): Dicionário com os exames e seus valores.
         maxEmployees (int): Número máximo de funcionários.
-        worksheet_employees (Worksheet): Planilha de exames realizados pelos funcionarios.
+        worksheet_employees (Worksheet): Planilha de exames realizados pelos
+        funcionarios.
         workbook_employees (Workbook): Workbook de exames realizados.
         names_of_companies (list): Lista de nomes de empresas.
         companies_not_found (list): Lista de empresas não encontradas.
@@ -380,8 +383,10 @@ class BillingDataProcessor(QObject):
         started (Signal): Sinal emitido quando o processo é iniciado.
         progressed (Signal): Sinal emitido quando o progresso é atualizado.
         finished (Signal): Sinal emitido quando o processo é finalizado.
-        range_progress (Signal): Sinal emitido para definir o intervalo de progresso.
-        companies_not_found_signal (Signal): Sinal emitido quando empresas não são encontradas.
+        range_progress (Signal): Sinal emitido para definir o intervalo de
+        progresso.
+        companies_not_found_signal (Signal): Sinal emitido quando empresas não
+        são encontradas.
         progress (int): Progresso atual do processo.
     """
 
@@ -416,6 +421,8 @@ class BillingDataProcessor(QObject):
         self.is_detail = is_detail
         self.dictionary_exams = dictionary_exams
         self.names_of_companies = names_of_companies
+        self.maxEmployees = 0
+        self.progress = 0
 
     def reset(self):
         """
@@ -522,10 +529,6 @@ class BillingDataProcessor(QObject):
 
         return company_names_list
 
-    def update_progress_bar(self):
-        self.max_employees = len(self.company_list_billing)
-        self.range_progress.emit(self.max_employees)
-
     def test_X_Companys(self, number_companies):
         # Bloco para testar numero x de empresas
         companyList_BillingTeste = []
@@ -542,10 +545,12 @@ class BillingDataProcessor(QObject):
         billing_list = self.extract_billing_list()
         self.company_list_billing = []
 
-        for billing_row in billing_list:
+        for index, billing_row in enumerate(billing_list):
             self.check_companies(billing_row)
+            if len(billing_list) > 0:
+                progress_percent = int(30 * (index + 1) / len(billing_list))
+                self.progressed.emit(10 + progress_percent)
 
-        self.update_progress_bar()
         self.names_of_companies = self.get_name_company_in_sheet()
         self.companies_not_found.append('\nEmpresas não encontradas: ')
 
@@ -592,8 +597,6 @@ class BillingDataProcessor(QObject):
         mountStyleHeaderTable(self.yearText, monthNumber, ws, company.name)
         for item in data_company:
 
-            self.progress += 1
-            self.progressed.emit(self.progress)
             if (self.is_detail):
                 addDetailDataFrame(ws, item)
             else:
@@ -658,10 +661,12 @@ class BillingDataProcessor(QObject):
 
     def get_company_list(self, company_Billing) -> List[Company]:
         """
-        Constrói uma lista de objetos Company a partir dos dados de faturamento.
+        Constrói uma lista de objetos Company a partir dos dados de
+        faturamento.
 
         Args:
-            company_Billing (CompanyBilling): Objeto CompanyBilling contendo os dados de faturamento.
+            company_Billing (CompanyBilling): Objeto CompanyBilling contendo
+            os dados de faturamento.
 
         Returns:
             List[Company]: Lista de objetos Company.
@@ -726,7 +731,8 @@ class BillingDataProcessor(QObject):
     def _process_exams(self, exams_exact, list_of_company,
                        employee_company, newCompany):
         """
-        Processa os exames de um funcionário, atualizando os custos e os exames faltantes.
+        Processa os exames de um funcionário, atualizando os custos e os 
+        exames faltantes.
 
         Args:
             exams_exact (list): Lista de exames.
@@ -785,13 +791,14 @@ class BillingDataProcessor(QObject):
 
         for i, company in enumerate(companyList):
             if len(company) > 0:
-                # Progress Bar
+                # Incrementa o progresso para cada empresa processada
                 self.maxEmployees += len(company[0].employees)
-                self.range_progress.emit(self.maxEmployees)
                 await self.create_sheet(company[0], monthText.upper(),
                                         monthNumber)
                 self.progress += 1
-                self.progressed.emit(self.progress)
+                # Emit progress update
+                progress_percent = int(30 * (i + 1) / len(companyList))
+                self.progressed.emit(60 + progress_percent)
 
     def build_companies_list(self, companies):
         """
@@ -801,7 +808,8 @@ class BillingDataProcessor(QObject):
             companies (list): Lista de objetos Company.
 
         Returns:
-            list: Lista de dicionários com o nome da empresa e os exames faltantes.
+            list: Lista de dicionários com o nome da empresa
+            e os exames faltantes.
         """
         companies_list = []
         for company in companies:
@@ -814,7 +822,8 @@ class BillingDataProcessor(QObject):
 
     async def generate_files(self):
         """
-        Gera os arquivos de faturamento para todas as empresas na lista de faturamento.
+        Gera os arquivos de faturamento para todas as empresas na lista de
+        faturamento.
 
         Returns:
             list: Lista de empresas processadas.
@@ -822,8 +831,11 @@ class BillingDataProcessor(QObject):
         companyListAux = []
         for i, companyBilling in enumerate(self.companyList_Billing):
             companyListAux.append(self.get_company_list(companyBilling))
-            self.progress += 1
-            self.progressed.emit(self.progress)
+            # Emit progress update
+            if len(self.companyList_Billing) > 0:
+                progress_percent = int(
+                    20 * (i + 1) / len(self.companyList_Billing))
+                self.progressed.emit(30 + progress_percent)
         return companyListAux
 
     def create_output_folder(self):
@@ -842,8 +854,8 @@ class BillingDataProcessor(QObject):
         Processa todo o faturamento.
 
         Este método é responsável por coordenar todo o processo de faturamento,
-        incluindo o carregamento de dados, a geração de arquivos e a atualização
-        da barra de progresso.
+        incluindo o carregamento de dados, a geração de arquivos e
+        a atualização da barra de progresso.
 
         Emits:
             Signal: Vários sinais são emitidos para atualizar o progresso e
@@ -853,33 +865,31 @@ class BillingDataProcessor(QObject):
             self.reset()  # Resetando o estado antes de iniciar o processamento
             self.started.emit('Processo iniciado...')
             self.progress = 0
+
+            # Inicializa a barra de progresso
+            self.range_progress.emit(100)
+            self.progressed.emit(0)
+
             # Carregando dados do arquivo de exames realizados
             self.load_exam_data()
+            self.progressed.emit(10)
 
             # Gerando dados base da empresa
             asyncio.run(self.generate_base_data_company())
-
-            # Configurando a barra de progresso
-            initial_max_employees = self.maxEmployees
-            self.maxEmployees += len(self.companyList_Billing) - \
-                len(self.companies_not_found)
-            self.range_progress.emit(self.maxEmployees)
+            self.progressed.emit(30)
 
             # Gerando arquivos de faturamento
             companies = asyncio.run(self.generate_files())
-            self.progress += initial_max_employees
-            self.progressed.emit(self.progress)
+            self.progressed.emit(50)
 
             # Criando pasta que terá os arquivos de faturamentos
             self.create_output_folder()
-
-            # Atualizando a barra de progresso
-            self.maxEmployees += len(companies) - len(self.companies_not_found)
-            self.range_progress.emit(self.maxEmployees)
+            self.progressed.emit(60)
 
             # Criando os arquivos de faturamentos e populando.
             asyncio.run(self.get_all_exams(companies))
             companies_list = self.build_companies_list(companies)
+            self.progressed.emit(90)
 
             self.finished.emit(companies_list)
             if len(self.companies_not_found) > 1:
@@ -887,8 +897,9 @@ class BillingDataProcessor(QObject):
             else:
                 self.companies_not_found_signal.emit(
                     ['\nTodas as empresa foram geradas'])
-            self.progress += initial_max_employees
-            self.progressed.emit(self.progress)
+
+            # Finaliza a barra de progresso
+            self.progressed.emit(100)
 
         except ErrorBilling as error_billing:
             logging.error(f'Erro durante a geração: {str(error_billing)}')

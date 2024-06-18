@@ -357,10 +357,6 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-
-
 class BillingDataProcessor(QObject):
     """
     Classe responsável por processar o faturamento dos exames médicos

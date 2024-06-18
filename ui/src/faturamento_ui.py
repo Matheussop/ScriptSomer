@@ -9,11 +9,13 @@ from styles import setupTheme
 from window import Ui_MainWindow
 from faturamento import BillingDataProcessor
 
+# Configure logging
+log_file_path = "faturamento.log"
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[
-                        logging.FileHandler("faturamento.log"),
-                        logging.StreamHandler()
+                        logging.FileHandler(log_file_path, mode='w'),
+                        logging.StreamHandler(sys.stdout)
                     ])
 
 
@@ -71,7 +73,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.monthText.setText(monthText)
 
         # Set default folder
-        folderName = 'Faturamento_Teste'
+        folderName = 'Faturamento'
         self.folderText.setText(folderName)
         self.folderText.setTextMargins(10, 0, 0, 0)
 
@@ -215,7 +217,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             value (int): Valor do progresso.
         """
         self.progressBar.setValue(value)
-        logging.info(f'Progresso: {value}')
 
     @Slot()
     def setRangeProgressBar(self, value):

@@ -5,6 +5,7 @@ import locale
 import sys
 import asyncio
 import os
+import logging
 
 from PySide6.QtCore import QObject, Signal
 from argparse import ArgumentParser
@@ -131,6 +132,17 @@ class Billing:
 
 
 def getExams(company_name, list_of_company_exams, newCompany):
+    """
+    Carrega os exames para uma empresa específica a partir do arquivo .xlsx.
+
+    Args:
+        company_name (str): Nome da empresa.
+        list_of_company_exams (list): Lista para armazenar os exames.
+        newCompany (Company): Objeto Company para armazenar os dados da empresa.
+
+    Raises:
+        ErrorBilling: Se ocorrer um erro ao acessar o arquivo.
+    """
     ROW_START = 3
     COLUMN_INDEX = [0, 1]
     try:
@@ -344,7 +356,35 @@ def showInTerminalCompanyNameNumber(companyName, number):
           ' Nome empresa', companyName)
 
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 class BillingDataProcessor(QObject):
+    """
+    Classe responsável por processar o faturamento dos exames médicos realizados por empresas.
+
+    Atributos:
+        yearText (str): Ano do faturamento.
+        monthText (str): Mês do faturamento.
+        folder (str): Pasta onde os arquivos gerados serão salvos.
+        is_detail (bool): Indica se os arquivos devem ser detalhados.
+        dictionary_exams (list): Dicionário com os exames e seus valores.
+        maxEmployees (int): Número máximo de funcionários.
+        worksheet_employees (Worksheet): Planilha de exames realizados pelos funcionarios.
+        workbook_employees (Workbook): Workbook de exames realizados.
+        names_of_companies (list): Lista de nomes de empresas.
+        companies_not_found (list): Lista de empresas não encontradas.
+        companyList (list): Lista de empresas.
+        companyList_Billing (list): Lista de empresas para faturamento.
+        started (Signal): Sinal emitido quando o processo é iniciado.
+        progressed (Signal): Sinal emitido quando o progresso é atualizado.
+        finished (Signal): Sinal emitido quando o processo é finalizado.
+        range_progress (Signal): Sinal emitido para definir o intervalo de progresso.
+        companies_not_found_signal (Signal): Sinal emitido quando empresas não são encontradas.
+        progress (int): Progresso atual do processo.
+    """
+
     yearText = ''
     monthText = ''
     folder = ''
@@ -417,6 +457,12 @@ class BillingDataProcessor(QObject):
     def getCompaniesNotFound(self): return self.companies_not_found
 
     def extract_billing_list(self):
+        """
+        Extrai a lista de faturamento do arquivo de entrada.
+
+        Returns:
+            List[Billing]: Lista de objetos Billing extraídos do arquivo.
+        """
         billing_list = []
         for billing_row in self.worksheet_employees.\
                 iter_rows(min_row=2, values_only=True):
@@ -508,6 +554,14 @@ class BillingDataProcessor(QObject):
         return newDictionary
 
     async def create_sheet(self, company, monthText, monthNumber):
+        """
+        Cria uma planilha Excel para a empresa especificada.
+
+        Args:
+            company (Company): Objeto Company contendo os dados da empresa.
+            monthText (str): Nome do mês.
+            monthNumber (int): Número do mês.
+        """
         wb: Workbook = Workbook()
         styleXlsx(wb)
         wb.remove(wb['Sheet'])
@@ -545,8 +599,6 @@ class BillingDataProcessor(QObject):
         wb.save(f'{folder_and_name} {self.yearText}.xlsx')
 
     def check_companies(self, billing_row):
-        # if (i > 50):
-        #     continue
         noHasCompany = True
 
         # Para cada empresa criar uma instancia dela com o emprego caso ja
@@ -589,90 +641,16 @@ class BillingDataProcessor(QObject):
                 employeesBilling=[employeesBillingAux])
             self.companyList_Billing.append(newCompanyBilling)
 
-    def getCompanyList(self, company_Billing) -> List[Company]:
-        companyListAux = []
-        newCompany = Company(company_Billing.name)
-        newCompany.employees = []
-        company_name_billing = unidecode(company_Billing.name.lower())
-        hasName = False
-        company_name = ''
-        for names in self.names_of_companies:  # type:ignore
-            # Name of company
-            realNameOfCompany = unidecode(names[0].lower())
-            # Name of page sheet company
-            nameOfPageSheetCompany = unidecode(names[1].lower())
-            company_name_billing = company_name_billing.replace('ltda', '')
-            company_name_billing = company_name_billing.replace(
-                'eireli', '')
-            realNameOfCompany = realNameOfCompany.replace('ltda', '')
-            realNameOfCompany = realNameOfCompany.replace('eireli', '')
-
-            if ((realNameOfCompany in company_name_billing)
-                    or (nameOfPageSheetCompany in company_name_billing)):
-                company_name = names[1]
-                hasName = True
-                break
-        if (not hasName):
-            self.companies_not_found.append('\n' + company_Billing.name)
-        else:
-            list_of_company_exams = []
-            getExams(company_name, list_of_company_exams, newCompany)
-            namesAndExams = []
-            for employees in company_Billing.employeesBilling:
-                namesAndExams.append(
-                    (employees.name, employees.exams, employees.function,
-                     employees.data, employees.exam_type))
-
-            for nameAndExam in namesAndExams:
-                dateFormatted = setDateXlsxToString(nameAndExam[3])
-                employee_company = Employee()
-                employee_company.name = nameAndExam[0]
-                employee_company.function = nameAndExam[2]
-                employee_company.exams = nameAndExam[1]
-                employee_company.exam_type = nameAndExam[4]
-                employee_company.date = dateFormatted
-                employee_company.exams_cost = []
-                exams_exact = nameAndExam[1].split('/')
-                hasExam = False
-                for exam in exams_exact:
-                    examWithoutFormat = exam
-                    exam = exam.strip()
-                    exam_compar = unidecode(exam.lower())
-                    for exam_significant in self.dictionary_exams:
-                        examDictionary = unidecode(
-                            exam_significant[0].lower())
-                        if (exam_compar == examDictionary):
-                            exam = exam_significant[1]
-                    hasExam = False
-                    for company in list_of_company_exams:
-                        if (unidecode(exam.lower())
-                                in unidecode(company[0].lower())
-                                and not hasExam):
-                            if (('externo' not in exam.lower() and
-                                    'externo' not in company[0].lower())):
-                                if (isinstance(company[1], (float, int))):
-                                    employee_company.cost += company[1]
-                                if (self.is_detail):
-                                    employee_company.exams_cost.append(
-                                        (examWithoutFormat, company[1]))
-                                hasExam = True
-                    if (not hasExam):
-                        if (newCompany.missingExams == ''):
-                            auxStr = ""
-                            newCompany.missingExams = auxStr + exam
-
-                        elif (not (exam in newCompany.missingExams)):
-                            newCompany.missingExams = \
-                                newCompany.missingExams \
-                                + ", " + exam
-                newCompany.employees.append(employee_company)
-
-            companyListAux.append(newCompany)
-        return companyListAux
-
-    # ----------------------------------------------------------------
-
     def get_company_list(self, company_Billing) -> List[Company]:
+        """
+        Constrói uma lista de objetos Company a partir dos dados de faturamento.
+
+        Args:
+            company_Billing (CompanyBilling): Objeto CompanyBilling contendo os dados de faturamento.
+
+        Returns:
+            List[Company]: Lista de objetos Company.
+        """
         companyListAux = []
         newCompany = Company(company_Billing.name)
         newCompany.employees = []
@@ -732,6 +710,15 @@ class BillingDataProcessor(QObject):
 
     def _process_exams(self, exams_exact, list_of_company,
                        employee_company, newCompany):
+        """
+        Processa os exames de um funcionário, atualizando os custos e os exames faltantes.
+
+        Args:
+            exams_exact (list): Lista de exames.
+            list_of_company (list): Lista de exames da empresa.
+            employee_company (Employee): Objeto Employee do funcionário.
+            newCompany (Company): Objeto Company da empresa.
+        """
         for exam in exams_exact:
             examWithoutFormat = exam
             exam = self._normalize_name(exam.strip())
@@ -794,6 +781,12 @@ class BillingDataProcessor(QObject):
     def build_companies_list(self, companies):
         """
         Constrói a lista de empresas com os resultados do faturamento.
+
+        Args:
+            companies (list): Lista de objetos Company.
+
+        Returns:
+            list: Lista de dicionários com o nome da empresa e os exames faltantes.
         """
         companies_list = []
         for company in companies:
@@ -805,6 +798,12 @@ class BillingDataProcessor(QObject):
         return companies_list
 
     async def generate_files(self):
+        """
+        Gera os arquivos de faturamento para todas as empresas na lista de faturamento.
+
+        Returns:
+            list: Lista de empresas processadas.
+        """
         companyListAux = []
         for i, companyBilling in enumerate(self.companyList_Billing):
             companyListAux.append(self.get_company_list(companyBilling))
@@ -826,6 +825,14 @@ class BillingDataProcessor(QObject):
     def process_billing(self):
         """
         Processa todo o faturamento.
+
+        Este método é responsável por coordenar todo o processo de faturamento,
+        incluindo o carregamento de dados, a geração de arquivos e a atualização
+        da barra de progresso.
+
+        Emits:
+            Signal: Vários sinais são emitidos para atualizar o progresso e
+            indicar o início e o fim do processo.
         """
         try:
             self.started.emit('Processo iniciado...')
@@ -866,9 +873,9 @@ class BillingDataProcessor(QObject):
             self.progressed.emit(self.progress)
 
         except ErrorBilling as error_billing:
-            exception_ = ErrorBilling('Ocorreu um error durante a geração')
+            logging.error(f'Erro durante a geração: {str(error_billing)}')
             self.finished.emit(['Error: ', str(error_billing)])
-            raise exception_
+            raise ErrorBilling('Ocorreu um error durante a geração')
 
 
 # Parâmetros necessários para executar o script independentemente.

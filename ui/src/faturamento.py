@@ -30,8 +30,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-WORKBOOK_PATH_COMPANY = resource_path('./files/ValoresEmpresas.xlsx')
-WORKBOOK_PATH_FUNC = resource_path('./files/examesRealizados.xlsx')
+WORKBOOK_PATH_COMPANY = './files/ValoresEmpresas.xlsx'
+WORKBOOK_PATH_FUNC = './files/examesRealizados.xlsx'
 
 
 class ErrorBilling(Exception):
@@ -147,7 +147,6 @@ def getExams(company_name, list_of_company_exams, newCompany):
     ROW_START = 3
     COLUMN_INDEX = [0, 1]
     try:
-
         df = pd.read_excel(WORKBOOK_PATH_COMPANY, sheet_name=company_name)
         # Get row 3 to infinity and Column A and B
         tableOfCompany_Value = df.iloc[ROW_START:, COLUMN_INDEX]
@@ -464,10 +463,10 @@ class BillingDataProcessor(QObject):
             try:
                 self.worksheet_employees: Worksheet = \
                     self.workbook_employees[sheet_name_employees]
-            except Exception:
+            except Exception as e:
                 error = f'Error ao tentar encontrar '\
                     'uma página da planilha chamada ' \
-                    f'{sheet_name_employees}'
+                    f'{sheet_name_employees}, {str(e) }'
                 exception_ = ErrorBilling(error)
 
                 raise exception_
@@ -478,7 +477,7 @@ class BillingDataProcessor(QObject):
         """
         Extrai a lista de faturamento do arquivo de entrada.
 
-        Returns:
+        Returns:bn 
             List[Billing]: Lista de objetos Billing extraídos do arquivo.
         """
         billing_list = []
@@ -551,7 +550,7 @@ class BillingDataProcessor(QObject):
         self.companies_not_found.append('\nEmpresas não encontradas: ')
 
     def saveDictionaryExams(self):
-        pathFile = resource_path('./files/dictionary_exams.json')
+        pathFile = './files/dictionary_exams.json'
 
         with open(pathFile, 'w', encoding='utf8') as arquivo:
             json.dump(
@@ -748,7 +747,7 @@ class BillingDataProcessor(QObject):
                         hasExam = True
 
             if not hasExam:
-                self._update_missing_exams(newCompany, exam)
+                self._update_missing_exams(newCompany, exam, employee_company)
 
     def _map_exam_to_dictionary(self, exam):
         for exam_significant in self.dictionary_exams:
@@ -772,11 +771,13 @@ class BillingDataProcessor(QObject):
                 return True
         return False
 
-    def _update_missing_exams(self, newCompany, exam):
+    def _update_missing_exams(self, newCompany, exam, employee_company):
         if not newCompany.missingExams:
-            newCompany.missingExams = exam
+            newCompany.missingExams = exam + \
+                " (" + employee_company.name + ") "
         elif exam not in newCompany.missingExams:
-            newCompany.missingExams += ", " + exam
+            newCompany.missingExams += ", " + exam + \
+                " (" + employee_company.name + ") "
 
     # ----------------------------------------------------------------
 

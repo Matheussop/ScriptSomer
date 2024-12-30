@@ -1,118 +1,122 @@
 [
-    [
-        "CLINICO",
-        "Clínico"
-    ],
-    [
-        "AUDIO",
-        "Audiometria"
-    ],
-    [
-        "HEMO",
-        "Hemograma c/ Plaquetas"
-    ],
-    [
-        "AC METIL",
-        "Ácido Metil Hipúrico"
-    ],
-    [
-        "AC HIPURICO",
-        "Ácido Hipúrico"
-    ],
-    [
-        "AC MANDELICO",
-        "Ácido Mandélico"
-    ],
-    [
-        "AC METIL HIPURICO",
-        "Ácido Metil Hipúrico"
-    ],
-    [
-        "RX DE TORAX",
-        "Raio-x de Tórax"
-    ],
-    [
-        "AV PSICOSSOCIAL",
-        "Avaliação Psicossocial"
-    ],
-    [
-        "AV PSICOLÓGICA",
-        "Avaliação Psicológica"
-    ],
-    [
-        "CLINICO EXTERNO",
-        "Exame Clínico (in loco)"
-    ],
-    [
-        "BIOMETRIA IMC",
-        "Biometria"
-    ],
-    [
-        "COLESTEROL LDL",
-        "LDL Colesterol"
-    ],
-    [
-        "LDL",
-        "LDL Colesterol"
-    ],
-    [
-        "COLESTEROL HDL",
-        "HDL Colesterol"
-    ],
-    [
-        "HDL",
-        "HDL Colesterol"
-    ],
-    [
-        "COLESTEROL VLDL",
-        "VLDL Colesterol"
-    ],
-    [
-        "VLDL",
-        "VLDL Colesterol"
-    ],
-    [
-        "AC Úrico",
-        "Acido Úrico"
-    ],
-    [
-        "RX DE COLUNA DORSAL",
-        "Raio-x de Coluna Dorsal"
-    ],
-    [
-        "RX DE COLUNA LOMBAR",
-        "Raio-x de Coluna Lombar"
-    ],
-    [
-        "AV OFTALMOLOGICA",
-        "Avaliação Oftalmológica"
-    ],
-    [
-        "AC TRANSMUCONICO",
-        "Ácido Transmucônico"
-    ],
-    [
-        "AC FENILGLIOXILICO",
-        "Ácido Fenilglioxílico"
-    ],
-    [
-        "QUESTIONARIO EPILEPSIA",
-        "Questionário de Epilepsia"
-    ],
-    [
-        "DOSAGEM DE FERRO",
-        "Ferro Sérico"
-    ],
-    [
-        "TOLUENO NA URINA",
-        "Tolueno Urinário"
-    ],
-    [
-        "RX COLUNA LOMBO SACRA",
-        "Raio-x Coluna Lombo Sacra"
-    ],
-    [
-        "AV DERMATOLOGICA OCUPACIONAL",
-        "Avaliação Dermatologica Ocupacional"
-    ]
+  [
+      "CLINICO",
+      "Clínico"
+  ],
+  [
+      "AUDIO",
+      "Audiometria"
+  ],
+  [
+      "HEMO",
+      "Hemograma c/ Plaquetas"
+  ],
+  [
+      "AC METIL",
+      "Ácido Metil Hipúrico"
+  ],
+  [
+      "AC HIPURICO",
+      "Ácido Hipúrico"
+  ],
+  [
+      "AC MANDELICO",
+      "Ácido Mandélico"
+  ],
+  [
+      "AC METIL HIPURICO",
+      "Ácido Metil Hipúrico"
+  ],
+  [
+      "RX DE TORAX",
+      "Raio-x de Tórax"
+  ],
+  [
+      "AV PSICOSSOCIAL",
+      "Avaliação Psicossocial"
+  ],
+  [
+      "AV PSICOLÓGICA",
+      "Avaliação Psicológica"
+  ],
+  [
+      "CLINICO EXTERNO",
+      "Exame Clínico (in loco)"
+  ],
+  [
+      "BIOMETRIA IMC",
+      "Biometria"
+  ],
+  [
+      "COLESTEROL LDL",
+      "LDL Colesterol"
+  ],
+  [
+      "LDL",
+      "LDL Colesterol"
+  ],
+  [
+      "COLESTEROL HDL",
+      "HDL Colesterol"
+  ],
+  [
+      "HDL",
+      "HDL Colesterol"
+  ],
+  [
+      "COLESTEROL VLDL",
+      "VLDL Colesterol"
+  ],
+  [
+      "VLDL",
+      "VLDL Colesterol"
+  ],
+  [
+      "AC Úrico",
+      "Acido Úrico"
+  ],
+  [
+      "RX DE COLUNA DORSAL",
+      "Raio-x de Coluna Dorsal"
+  ],
+  [
+      "RX DE COLUNA LOMBAR",
+      "Raio-x de Coluna Lombar"
+  ],
+  [
+      "RX COLUNA LOMBAR",
+      "Raio-x de Coluna Lombar"
+  ],
+  [
+      "AV OFTALMOLOGICA",
+      "Avaliação Oftalmológica"
+  ],
+  [
+      "AC TRANSMUCONICO",
+      "Ácido Transmucônico"
+  ],
+  [
+      "AC FENILGLIOXILICO",
+      "Ácido Fenilglioxílico"
+  ],
+  [
+      "QUESTIONARIO EPILEPSIA",
+      "Questionário de Epilepsia"
+  ],
+  [
+      "DOSAGEM DE FERRO",
+      "Ferro Sérico"
+  ],
+  [
+      "TOLUENO NA URINA",
+      "Tolueno Urinário"
+  ],
+  [
+      "RX COLUNA LOMBO SACRA",
+      "Raio-x Coluna Lombo Sacra"
+  ],
+  [
+      "AV DERMATOLOGICA OCUPACIONAL",
+      "Avaliação Dermatologica Ocupacional"
+  ]
 ]

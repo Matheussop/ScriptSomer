@@ -92,7 +92,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             event (QKeyEvent): Evento de tecla pressionada.
         """
         if event.key() == 16777220 and not self.inProcess:  # Enter key
-            self.inProcess = True
             self.startWorkerBilling()
 
     def messageTerminal(self, messages):
@@ -160,7 +159,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.progressBar.setValue(0)
         self.resultView.clear()
-        self.inProcess = False
 
     def handle_state(self, state):
         """
@@ -192,8 +190,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Salva os exames no dicionário quando a aplicação é fechada.
         """
-        if self.billing:
-            self.billing.saveDictionaryExams()
+        # if self.billing:
+        #     self.billing.saveDictionaryExams()
 
     @Slot()
     def workerBillingStarted(self, value):

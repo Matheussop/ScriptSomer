@@ -89,4 +89,4 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## Contato
 
-Nome do Desenvolvedor - [Seu Email](mailto:matheussopluiz@outlook.com)
+Nome do Desenvolvedor - [matheussopluiz@outlook.com](mailto:matheussopluiz@outlook.com)
